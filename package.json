@@ -1,0 +1,20 @@
+{
+  "name": "toolkit",
+  "version": "1.0.0",
+  "description": "TPMI Map Building Functions",
+  "main": "index.js",
+  "directories": {
+    "example": "examples"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Electro",
+  "license": "ISC",
+  "dependencies": {
+    "@flatten-js/core": "^1.2.22",
+    "cheerio": "^1.0.0-rc.6",
+    "pngjs-image": "^0.11.7"
+  }
+}
