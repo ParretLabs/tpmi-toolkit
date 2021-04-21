@@ -1,7 +1,7 @@
 # tpmi-toolkit
 Tools &amp; Algorithms for AI-Generated TagPro Maps
 
-# Run
+## Run
 ```bash
 # Clone the repository
 git clone https://github.com/ParretLabs/tpmi-toolkit.git
