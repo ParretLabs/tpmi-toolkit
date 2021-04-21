@@ -77,7 +77,7 @@ MapUtilities.visualizeWallMap = wallMap => {
 		}
 	}
 
-	return `<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`;
+	return `<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}" style="width: 50%">${svg}</svg>`;
 };
 
 MapUtilities.getEssentialWalls = map => {

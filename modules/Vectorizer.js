@@ -20,8 +20,8 @@ Vectorizer.VectorMap = class VectorMap {
 		let $svg = cheerio.load(rawSVG);
 
 		$svg("line").attr("stroke-linecap", "round");
-
-		$svg("svg").attr("viewBox", `0 0 ${this.size.x} ${this.size.y}`);
+		$svg("svg").attr("viewBox", `-5 -5 ${this.size.x + 5} ${this.size.y + 5}`);
+		$svg("svg").css("width", "50%");
 
 		return $svg.html();
 	}
