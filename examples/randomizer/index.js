@@ -52,7 +52,7 @@ const promptSchema = {
 	// 	new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
 	// ));
 
-	Vectorizer.sliceMap(vectorMapNew, SETTINGS.SYMMETRY.ROTATIONAL)
+	vectorMapNew.symmetrize(SETTINGS.SYMMETRY.ROTATIONAL);
 
 	await writeFile(__dirname + "/map.html", vectorMapOld.visualize() + vectorMapNew.visualize());
 

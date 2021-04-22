@@ -18,9 +18,9 @@ Vectorizer.VectorMap = class VectorMap {
 		this.recalculateSize();
 	}
 
-	setWalls(walls) {
+	setWalls(walls, disableRecalculation) {
 		this.walls = walls;
-		this.recalculateSize();
+		if(!disableRecalculation) this.recalculateSize();
 	}
 
 	recalculateSize() {
@@ -46,52 +46,12 @@ Vectorizer.VectorMap = class VectorMap {
 	}
 
 	symmetrize(symmetry) {
-		for (let y = 0; y < map.shape[1]; y++) {
-			for (let x = 0; x < Math.floor((map.shape[0]) / 2) + 2; x++) {
-				let tileType = map.get(x, y);
+		// Size recalculation is disabled so the dimensions stay the same.
+		// This is required so that the mirroring is accurate.
+		Vectorizer.sliceMap(this, symmetry, true);
+		Vectorizer.mirrorMap(this, symmetry);
 
-				let xPlace;
-				let yPlace;
-				
-				if(symmetry === "r"){
-					xPlace = (map.shape[0] - x) - 1;
-					yPlace = (map.shape[1] - y) - 1;
-				} else {
-					xPlace = (map.shape[0] - x) + 1;
-					yPlace = y;
-				}
-				
-				if(tileType === TILE_IDS.REDFLAG){
-					map.set(xPlace, yPlace, TILE_IDS.BLUEFLAG);
-				} else if(tileType === TILE_IDS.BLUEFLAG){
-					map.set(xPlace, yPlace, TILE_IDS.REDFLAG);
-				} else if(tileType === TILE_IDS.REDBOOST){
-					map.set(xPlace, yPlace, TILE_IDS.BLUEBOOST);
-				} else if(tileType === TILE_IDS.BLUEBOOST){
-					map.set(xPlace, yPlace, TILE_IDS.REDBOOST);
-				} else if(tileType === TILE_IDS.REDTEAMTILE){
-					map.set(xPlace, yPlace, TILE_IDS.BLUETEAMTILE);
-				} else if(tileType === TILE_IDS.BLUETEAMTILE){
-					map.set(xPlace, yPlace, TILE_IDS.REDTEAMTILE);
-				} else {
-					if(symmetry === "r"){
-						if(tileType === TILE_IDS.TLWALL){
-							map.set(xPlace, yPlace, TILE_IDS.BRWALL);
-						} else if(tileType === TILE_IDS.TRWALL){
-							map.set(xPlace, yPlace, TILE_IDS.BLWALL);
-						} else if(tileType === TILE_IDS.BLWALL){
-							map.set(xPlace, yPlace, TILE_IDS.TRWALL);
-						} else if(tileType === TILE_IDS.BRWALL){
-							map.set(xPlace, yPlace, TILE_IDS.TLWALL);
-						} else {
-							map.set(xPlace, yPlace, tileType);
-						}
-					} else {
-						map.set(xPlace, yPlace, tileType);
-					}
-				}
-			}
-		}
+		return this;
 	}
 
 	visualize() {
@@ -138,12 +98,12 @@ Vectorizer.createVectorMapFromTileMap = tileMap => {
 };
 
 // Slices a vector map in half
-Vectorizer.sliceMap = (vectorMap, symmetry) => {
+Vectorizer.sliceMap = (vectorMap, symmetry, disableDimensionRecalculation) => {
 	const mapWalls = vectorMap.walls;
 	const newMapWalls = [];
 
 	if(symmetry === SYMMETRY.ROTATIONAL) {
-		// Rotational Symmetry function
+		// Rotational Symmetry Slicing function
 		// https://www.desmos.com/calculator/vvd4ga5com
 		const isPointSafe = point => ((vectorMap.size.y / vectorMap.size.x) * point.x) + point.y < vectorMap.size.y;
 		const sliceLine = new Segment(new Point(0, vectorMap.size.y), new Point(vectorMap.size.x, 0));
@@ -163,6 +123,32 @@ Vectorizer.sliceMap = (vectorMap, symmetry) => {
 
 				// console.log("sliced", mapWalls[i], slicedSegments, safeSlice);
 			}
+		}
+	}
+
+	vectorMap.setWalls(newMapWalls, disableDimensionRecalculation);
+
+	return newMapWalls;
+};
+
+// Mirrors a map
+Vectorizer.mirrorMap = (vectorMap, symmetry) => {
+	const mapWalls = vectorMap.walls;
+	const newMapWalls = [];
+
+	if(symmetry === SYMMETRY.ROTATIONAL) {
+		for (let i = mapWalls.length - 1; i >= 0; i--) {
+			const segment1 = mapWalls[i].clone();
+			const segment2 = mapWalls[i].clone();
+
+			segment2.start.x = vectorMap.size.x - segment2.start.x;
+			segment2.start.y = vectorMap.size.y - segment2.start.y;
+
+			segment2.end.x = vectorMap.size.x - segment2.end.x;
+			segment2.end.y = vectorMap.size.y - segment2.end.y;
+
+			newMapWalls.push(segment1);
+			newMapWalls.push(segment2);
 		}
 	}
 
