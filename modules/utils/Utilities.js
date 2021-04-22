@@ -33,6 +33,12 @@ Utilities.getSeededRandomInt = (randomFunc, min, max) => {
 	return Math.floor(randomFunc() * (max - min)) + min; // The maximum is exclusive and the minimum is inclusive
 }
 
+Utilities.incrementTracker = tracker => tracker.slice(0, tracker.indexOf("-") + 1) + (Number(tracker.slice(tracker.indexOf("-") + 1)) + 1);
+
+Utilities.hashNumberArray = (numbers, maxBytes=8) => {
+	return parseInt(numbers.reduce((acc, val) => acc + val.toString(2).padStart(maxBytes, "0"), ""), 2);
+}
+
 Utilities.tileToHex = (tile)  => {
 	return Utilities.rgbToHex(TILE_COLORS[tile].r, TILE_COLORS[tile].b, TILE_COLORS[tile].g);
 }

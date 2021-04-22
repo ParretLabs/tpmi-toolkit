@@ -44,15 +44,23 @@ const TILE_COLORS = [
 	{ red: 128, green: 64, blue: 112, alpha: 255 }, // Bottom Right 45 Wall
 ];
 
+// Clockwise, starting from the top neighbor
 const NEIGHBOR_VECTORS = [
-	{x: 0, y: -1},
-	{x: 1, y: -1},
-	{x: 1, y: 0},
-	{x: 1, y: 1},
-	{x: 0, y: 1},
-	{x: -1, y: 1},
-	{x: -1, y: 0},
-	{x: -1, y: -1}
+	{x: 0, y: -1}, // 0
+	{x: 1, y: -1}, // 1
+	{x: 1, y: 0},  // 2
+	{x: 1, y: 1},  // 3
+	{x: 0, y: 1},  // 4
+	{x: -1, y: 1}, // 5
+	{x: -1, y: 0}, // 6
+	{x: -1, y: -1} // 7
 ];
 
-module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS };
+const SYMMETRY = {
+	ROTATIONAL: "R",
+	HORIZONTAL: "H",
+	VERTICAL: "V",
+	FOURWAY: "F"
+};
+
+module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS, SYMMETRY };

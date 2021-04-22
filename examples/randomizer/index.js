@@ -4,7 +4,7 @@ const prompt = require('prompt');
 
 const writeFile = util.promisify(fs.writeFile);
 
-const { Vectorizer, Randomizer, MapUtilities, Flatten } = require('../../');
+const { Vectorizer, Randomizer, MapUtilities, Flatten, SETTINGS } = require('../../');
 
 const promptSchema = {
 	properties: {
@@ -46,11 +46,13 @@ const promptSchema = {
 
 	let mapRandomizer = new Randomizer(settings.seed);
 
-	vectorMapNew.walls = mapRandomizer.additiveRandomizeWalls(
-		vectorMapNew.walls,
-		new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
-		new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
-	);
+	// vectorMapNew.setWalls(mapRandomizer.additiveRandomizeWalls(
+	// 	vectorMapNew.walls,
+	// 	new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
+	// 	new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
+	// ));
+
+	Vectorizer.sliceMap(vectorMapNew, SETTINGS.SYMMETRY.ROTATIONAL)
 
 	await writeFile(__dirname + "/map.html", vectorMapOld.visualize() + vectorMapNew.visualize());
 
