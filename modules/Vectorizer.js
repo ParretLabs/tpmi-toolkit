@@ -56,6 +56,7 @@ Vectorizer.VectorMap = class VectorMap {
 		// This is required so that the mirroring is accurate.
 		Vectorizer.sliceMap(this, symmetry, true);
 		Vectorizer.mirrorMap(this, symmetry);
+		this.setWalls(Vectorizer.fillWallHoles(this.walls));
 
 		return this;
 	}
