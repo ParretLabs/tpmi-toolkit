@@ -18,6 +18,12 @@ Vectorizer.VectorMap = class VectorMap {
 		this.recalculateSize();
 	}
 
+	clone() {
+		return new Vectorizer.VectorMap({
+			walls: this.walls.map(w => w.clone())
+		});
+	}
+
 	setWalls(walls, disableRecalculation) {
 		this.walls = walls;
 		if(!disableRecalculation) this.recalculateSize();

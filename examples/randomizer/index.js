@@ -47,7 +47,7 @@ const promptSchema = {
 	let tileMap = await MapUtilities.mapIDToTileMap(settings.mapID);
 
 	let vectorMapOld = Vectorizer.createVectorMapFromTileMap(tileMap);
-	let vectorMapNew = Vectorizer.createVectorMapFromTileMap(tileMap);
+	let vectorMapNew = vectorMapOld.clone();
 
 	let mapRandomizer = new Randomizer(settings.seed);
 
