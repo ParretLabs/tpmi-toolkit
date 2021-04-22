@@ -9,7 +9,7 @@ class Randomizer {
 		this.randomInt = (min, max) => Utilities.getSeededRandomInt(this.random, min, max);
 	}
 
-	additiveRandomizeWalls(inputWallSegments, minVector, maxVector) {
+	randomizeWalls(inputWallSegments, randomFunc) {
 		// Clone the wall segments
 		let wallSegments = inputWallSegments.map(s => s.clone());
 
@@ -22,37 +22,35 @@ class Randomizer {
 
 			if(affectedWallSegments[segmentHash]) continue;
 
-			// const startPoint = wallSegments[i].start;
-			const endPoint = wallSegments[i].end;
+			const oldPoint = wallSegments[i].end;
 
-			// const newStartPoint = this.additiveRandomizePoint(startPoint, minVector, maxVector);
-			const newEndPoint = this.additiveRandomizePoint(endPoint, minVector, maxVector);
+			const newPoint = randomFunc(oldPoint);
 
 			for (let j = wallSegments.length - 1; j >= 0; j--) {
 				const segmentHash = GeometryUtilities.hashSegment(wallSegments[j]);
-				// if(affectedWallSegments[segmentHash]) continue;
 
-				// if(wallSegments[j].start.equalTo(startPoint)) {
-				// 	wallSegments[j] = new Segment(newStartPoint, wallSegments[j].end);
-				// 	affectedWallSegments[segmentHash] = true;
-				// }
-				// if(wallSegments[j].end.equalTo(startPoint)) {
-				// 	wallSegments[j] = new Segment(wallSegments[j].start, startPoint);
-				// 	affectedWallSegments[segmentHash] = true;
-				// }
+				if(wallSegments[j].start.equalTo(oldPoint) && !newPoint.equalTo(wallSegments[j].start)) {
+					wallSegments[j] = new Segment(newPoint, wallSegments[j].end);
+					const newSegmentHash = GeometryUtilities.hashSegment(wallSegments[j]);
 
-				if(wallSegments[j].start.equalTo(endPoint)) {
-					wallSegments[j] = new Segment(newEndPoint, wallSegments[j].end);
 					affectedWallSegments[segmentHash] = true;
+					affectedWallSegments[newSegmentHash] = true;
 				}
-				if(wallSegments[j].end.equalTo(endPoint)) {
-					wallSegments[j] = new Segment(wallSegments[j].start, newEndPoint);
+				if(wallSegments[j].end.equalTo(oldPoint) && !newPoint.equalTo(wallSegments[j].end)) {
+					wallSegments[j] = new Segment(wallSegments[j].start, newPoint);
+					const newSegmentHash = GeometryUtilities.hashSegment(wallSegments[j]);
+					
 					affectedWallSegments[segmentHash] = true;
+					affectedWallSegments[newSegmentHash] = true;
 				}
 			}
 		}
 
 		return wallSegments;
+	}
+
+	additiveRandomizeWalls(wallSegments, minVector, maxVector) {
+		return this.randomizeWalls(wallSegments, p => this.additiveRandomizePoint(p, minVector, maxVector));
 	}
 
 	additiveRandomizeSegment(segment, minVector, maxVector) {
