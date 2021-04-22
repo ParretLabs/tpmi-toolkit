@@ -201,8 +201,6 @@ Vectorizer.fillWallHoles = (walls) => {
 	for (let i = looseEnds.length - 1; i >= 0; i--) {
 		if(looseEnds[i].used) continue;
 
-		console.log(looseEnds[i], i);
-
 		const loosePoint = looseEnds[i].startIsLoose ? looseEnds[i].segment.start : looseEnds[i].segment.end;
 
 		let closestLoose = {
@@ -289,7 +287,12 @@ Vectorizer.getLinesFromWallMap = wallMap => {
 		if(newLines.length > 0) traceMapFromLines(newLines, Utilities.incrementTracker(branchTracker), settings);
 	}
 
-	return lines.map(l => l.segment);
+	let walls = lines.map(l => l.segment);
+
+	// Fill in any loose ends.
+	let mapWalls = Vectorizer.fillWallHoles(walls);
+
+	return mapWalls;
 };
 
 /**
