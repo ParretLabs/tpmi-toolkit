@@ -27,6 +27,12 @@ const promptSchema = {
 			type: 'number',
 			pattern: /^[0-9]+$/,
 			message: 'Seed must be a number'
+		},
+		symmetry: {
+			description: 'Map Symmetry | (R)otational, "" for no symmetry',
+			pattern: /^[R ]+$/,
+			message: 'Invalid Symmetry',
+			default: ""
 		}
 	}
 };
@@ -36,7 +42,6 @@ const promptSchema = {
 
 	prompt.start();
 	const settings = await prompt.get(promptSchema);
-	settings.noiseLevel = Number(settings.noiseLevel);
 
 	console.log("Retrieving map...");
 	let tileMap = await MapUtilities.mapIDToTileMap(settings.mapID);
@@ -46,13 +51,13 @@ const promptSchema = {
 
 	let mapRandomizer = new Randomizer(settings.seed);
 
-	// vectorMapNew.setWalls(mapRandomizer.additiveRandomizeWalls(
-	// 	vectorMapNew.walls,
-	// 	new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
-	// 	new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
-	// ));
+	vectorMapNew.setWalls(mapRandomizer.additiveRandomizeWalls(
+		vectorMapNew.walls,
+		new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
+		new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
+	));
 
-	vectorMapNew.symmetrize(SETTINGS.SYMMETRY.ROTATIONAL);
+	if(settings.symmetry) vectorMapNew.symmetrize(settings.symmetry);
 
 	await writeFile(__dirname + "/map.html", vectorMapOld.visualize() + vectorMapNew.visualize());
 
