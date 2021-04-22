@@ -154,14 +154,14 @@ Vectorizer.sliceMap = (vectorMap, symmetry) => {
 			if(isPointSafe(mapWalls[i].start) && isPointSafe(mapWalls[i].end)) {
 				newMapWalls.push(mapWalls[i]);
 			} else if(intersection = mapWalls[i].intersect(sliceLine)){
-				// if(intersection.length === 0) continue;
+				if(intersection.length === 0) continue;
 
-				// let slicedSegments = mapWalls[i].split(intersection[0]);
-				// let safeSlice = slicedSegments.find(s => s && isPointSafe(s.start) && isPointSafe(s.end));
+				let slicedSegments = mapWalls[i].split(intersection[0]);
+				let safeSlice = slicedSegments.find(s => s && (isPointSafe(s.start) || isPointSafe(s.end)));
 
-				// mapWalls[i] = safeSlice;
+				if(safeSlice) newMapWalls.push(safeSlice);
 
-				// console.log("sliced");
+				// console.log("sliced", mapWalls[i], slicedSegments, safeSlice);
 			}
 		}
 	}
