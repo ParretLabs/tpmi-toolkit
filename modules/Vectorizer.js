@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const { Point, Segment, Vector } = require('@flatten-js/core');
 const MapUtilities = require('./utils/MapUtilities');
+const { NEIGHBOR_VECTORS } = require('./SETTINGS');
 
 let Vectorizer = {};
 
@@ -105,17 +106,9 @@ Vectorizer.traceLinesFromPoint = (wallMap, point) => {
 
 	const traceLine = (x, y) => Vectorizer.traceSingleLineFromPoint(wallMap, point, new Point(x, y));
 
-	// Top, Right, Bottom, Left
-	if(pointNeighbors[0] === 1) lines.push(traceLine(0, -1));
-	if(pointNeighbors[2] === 1) lines.push(traceLine(1, 0));
-	if(pointNeighbors[4] === 1) lines.push(traceLine(0, 1));
-	if(pointNeighbors[6] === 1) lines.push(traceLine(-1, 0));
-	
-	// Top Left, Top Right, Bottom Left, Bottom Right
-	if(pointNeighbors[7] === 1) lines.push(traceLine(-1, -1));
-	if(pointNeighbors[1] === 1) lines.push(traceLine(1, -1));
-	if(pointNeighbors[5] === 1) lines.push(traceLine(-1, 1));
-	if(pointNeighbors[3] === 1) lines.push(traceLine(1, 1));
+	for (let i = pointNeighbors.length - 1; i >= 0; i--) {
+		if(pointNeighbors[i] === 1) lines.push(traceLine(NEIGHBOR_VECTORS[i].x, NEIGHBOR_VECTORS[i].y));
+	}
 
 	let filteredLines = lines.filter(a => a !== null);
 	if(
@@ -145,10 +138,13 @@ Vectorizer.traceSingleLineFromPoint = (wallMap, startPoint, direction) => {
 		endPoint.x += direction.x;
 		endPoint.y += direction.y;
 
-		if(!MapUtilities.getTile(wallMap, endPoint.x, endPoint.y) || MapUtilities.getTile(wallMap, endPoint.x, endPoint.y) === 2) break;
-
 		// Mark point as seen
 		seenPoints.push(endPoint.clone());
+
+		if(
+			!MapUtilities.getTile(wallMap, endPoint.x, endPoint.y) ||
+			MapUtilities.getTile(wallMap, endPoint.x, endPoint.y) === 2
+		) break;
 	}
 
 	endPoint.x -= direction.x;

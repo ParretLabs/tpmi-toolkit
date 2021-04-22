@@ -1,6 +1,4 @@
-const SETTINGS = {};
-
-SETTINGS.TILE_IDS = {
+const TILE_IDS = {
 	FLOOR: 0,
 	WALL: 1,
 	BACKGROUND: 2,
@@ -23,7 +21,7 @@ SETTINGS.TILE_IDS = {
 	BRWALL: 19
 };
 
-SETTINGS.TILE_COLORS = [
+const TILE_COLORS = [
 	{ red: 212, green: 212, blue: 212, alpha: 255 }, // Floor
 	{ red: 120, green: 120, blue: 120, alpha: 255 }, // Wall
 	{ red: 0, green: 0, blue: 0, alpha: 255 }, // Background
@@ -46,4 +44,15 @@ SETTINGS.TILE_COLORS = [
 	{ red: 128, green: 64, blue: 112, alpha: 255 }, // Bottom Right 45 Wall
 ];
 
-module.exports = SETTINGS;
+const NEIGHBOR_VECTORS = [
+	{x: 0, y: -1},
+	{x: 1, y: -1},
+	{x: 1, y: 0},
+	{x: 1, y: 1},
+	{x: 0, y: 1},
+	{x: -1, y: 1},
+	{x: -1, y: 0},
+	{x: -1, y: -1}
+];
+
+module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS };
