@@ -68,18 +68,6 @@ MapUtilities.tileMapToWallMap = tileMap => {
 	return wallMap;
 };
 
-MapUtilities.visualizeWallMap = wallMap => {
-	let svg = "";
-
-	for (let y = 0; y < wallMap.length; y++) {
-		for (let x = 0; x < wallMap[0].length; x++) {
-			if(wallMap[y][x] === 1) svg += `<rect x="${x}" y="${y}" width="1" height="1" />`;
-		}
-	}
-
-	return `<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}" style="width: 50%">${svg}</svg>`;
-};
-
 MapUtilities.getEssentialWalls = map => {
 	let essentialWallMap = Utilities.createEmpty2dArray(map[0].length, map.length);
 

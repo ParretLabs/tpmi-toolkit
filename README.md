@@ -16,3 +16,5 @@ yarn
 cd /examples/basic
 node index.js
 ```
+
+Currently only executable on Node.js. Client-side use through browserify is on the roadmap.

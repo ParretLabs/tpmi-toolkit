@@ -4,7 +4,7 @@ const prompt = require('prompt');
 
 const writeFile = util.promisify(fs.writeFile);
 
-const { Vectorizer, MapUtilities } = require('../../');
+const { Vectorizer, MapUtilities, VisualUtilities } = require('../../');
 
 (async () => {
 	console.log("TPMI Toolkit - Basic");
@@ -19,7 +19,7 @@ const { Vectorizer, MapUtilities } = require('../../');
 
 	let vectorMap = Vectorizer.createVectorMapFromTileMap(tileMap);
 
-	await writeFile(__dirname + "/map.html", vectorMap.visualize() + MapUtilities.visualizeWallMap(wallMap));
+	await writeFile(__dirname + "/map.html", vectorMap.visualize() + VisualUtilities.visualizeWallMap(wallMap));
 
 	console.log("Wrote preview file to " + __dirname + "/map.html");
 })();
