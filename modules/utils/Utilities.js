@@ -24,7 +24,13 @@ Utilities.random = Utilities.seed(Date.now());
 Utilities.getRandomInt = (min, max) => {
 	min = Math.ceil(min);
 	max = Math.floor(max);
-	return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
+	return Math.floor(Math.random() * (max - min)) + min; // The maximum is exclusive and the minimum is inclusive
+}
+
+Utilities.getSeededRandomInt = (randomFunc, min, max) => {
+	min = Math.ceil(min);
+	max = Math.floor(max);
+	return Math.floor(randomFunc() * (max - min)) + min; // The maximum is exclusive and the minimum is inclusive
 }
 
 Utilities.tileToHex = (tile)  => {
