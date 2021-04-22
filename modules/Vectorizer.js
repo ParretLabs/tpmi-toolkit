@@ -15,11 +15,24 @@ Vectorizer.VectorMap = class VectorMap {
 	}
 
 	visualize() {
-		const wallSVG = this.walls.map(w => w.svg()).join("");
+		const gridSVG = `<g>
+			<defs>
+				<pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
+					<rect width="1" height="1" fill="white"/>
+					<path d="M 1 0 L 0 0 0 1" fill="none" stroke="gray" stroke-width="0.1"/>
+				</pattern>
+			</defs>
 
-		let rawSVG = `<svg>${wallSVG}</svg>`;
-		let $svg = cheerio.load(rawSVG);
+			<rect x="-0.5" y="-0.5" width="100%" height="100%" fill="url(#grid)" />
+		</g>`;
+		const wallSVG = `<g>${this.walls.map(w => w.svg()).join("").replace(/[\n\r]/g, "")}</g>`;
 
+		let $svg = cheerio.load("<body><svg></svg></body>");
+
+		$svg("svg").html($svg("svg").html() + gridSVG);
+
+		$svg("svg").html($svg("svg").html() + wallSVG);
+		$svg("line").attr("stroke-width", "0.5");
 		$svg("line").attr("stroke-linecap", "round");
 		$svg("svg").attr("viewBox", `-5 -5 ${this.size.x + 5} ${this.size.y + 5}`);
 		$svg("svg").css("width", "50%");
@@ -46,12 +59,6 @@ Vectorizer.createVectorMapFromTileMap = tileMap => {
  */
 Vectorizer.getLinesFromWallMap = wallMap => {
 	let lines = [];
-	// Find the starting point
-	const wallPoint = MapUtilities.diagonalWallSearch(wallMap);
-
-	if(!wallPoint) return [];
-
-	traceMapOutlineFromLines(Vectorizer.traceLinesFromPoint(wallMap, wallPoint));
 
 	for (let y = wallMap.length - 1; y >= 0; y--) {
 		for (let x = wallMap[0].length - 1; x >= 0; x--) {
