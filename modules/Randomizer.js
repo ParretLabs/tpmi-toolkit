@@ -1,6 +1,7 @@
 const { Point, Segment, Vector } = require('@flatten-js/core');
 
 const Utilities = require('./utils/Utilities');
+const VectorUtilities = require('./utils/VectorUtilities');
 const GeometryUtilities = require('./utils/GeometryUtilities');
 
 class Randomizer {
@@ -13,7 +14,7 @@ class Randomizer {
 	randomizeWalls(inputWallSegments, randomFunc) {
 		// Clone the wall segments
 		let wallSegments = inputWallSegments.map(s => s.clone());
-
+		// Track the segments that have been moved
 		let affectedWallSegments = {};
 
 		for (let i = wallSegments.length - 1; i >= 0; i--) {
@@ -24,27 +25,10 @@ class Randomizer {
 			if(affectedWallSegments[segmentHash]) continue;
 
 			const oldPoint = wallSegments[i].end;
-
 			const newPoint = randomFunc(oldPoint);
 
-			for (let j = wallSegments.length - 1; j >= 0; j--) {
-				const segmentHash = GeometryUtilities.hashSegment(wallSegments[j]);
-
-				if(wallSegments[j].start.equalTo(oldPoint) && !newPoint.equalTo(wallSegments[j].start)) {
-					wallSegments[j] = new Segment(newPoint, wallSegments[j].end);
-					const newSegmentHash = GeometryUtilities.hashSegment(wallSegments[j]);
-
-					affectedWallSegments[segmentHash] = true;
-					affectedWallSegments[newSegmentHash] = true;
-				}
-				if(wallSegments[j].end.equalTo(oldPoint) && !newPoint.equalTo(wallSegments[j].end)) {
-					wallSegments[j] = new Segment(wallSegments[j].start, newPoint);
-					const newSegmentHash = GeometryUtilities.hashSegment(wallSegments[j]);
-					
-					affectedWallSegments[segmentHash] = true;
-					affectedWallSegments[newSegmentHash] = true;
-				}
-			}
+			let newAffectedWallSegments = VectorUtilities.translateWallsAtPoint(wallSegments, oldPoint, newPoint);
+			affectedWallSegments = {...affectedWallSegments, ...newAffectedWallSegments};
 		}
 
 		return wallSegments;

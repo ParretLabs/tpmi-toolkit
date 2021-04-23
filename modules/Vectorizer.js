@@ -1,6 +1,7 @@
 const { Point, Segment, Vector, Box } = require('@flatten-js/core');
 
 const Utilities = require('./utils/Utilities');
+const VectorUtilities = require('./utils/VectorUtilities');
 const MapUtilities = require('./utils/MapUtilities');
 const GeometryUtilities = require('./utils/GeometryUtilities');
 const VisualUtilities = require('./utils/VisualUtilities');
@@ -14,8 +15,9 @@ Vectorizer.VectorMap = class VectorMap {
 		walls
 	}) {
 		this.size = null;
-
 		this.walls = walls;
+
+		this.pathFindingMap = null;
 
 		this.normalize();
 	}
@@ -35,9 +37,9 @@ Vectorizer.VectorMap = class VectorMap {
 	}
 
 	normalize() {
-		Vectorizer.roundMapPositions(this);
+		VectorUtilities.roundMapPositions(this);
 		Vectorizer.reframeMap(this);
-		this.size = Vectorizer.calculateMapSize(this);
+		this.size = VectorUtilities.calculateMapSize(this);
 	}
 
 	symmetrize(symmetry) {
@@ -70,37 +72,22 @@ Vectorizer.createVectorMapFromTileMap = tileMap => {
 };
 
 Vectorizer.createTileMapFromVectorMap = vectorMap => {
-	let tileMap = Utilities.createEmpty2dArray(vectorMap.width + 1, vectorMap.height + 1);
-	let detectorSize = 0.9;
-
-	let detectors = [];
-
-	// Iterate through every tile
-	// If a line exists on that tile, draw a wall there.
-	for (let y = 0; y < tileMap.length; y++) {
-		for (let x = 0; x < tileMap[0].length; x++) {
-			const detectorPos = new Point(x - (detectorSize / 2), y - (detectorSize / 2));
-
-			const tileBox = new Box(
-				detectorPos.x,
-				detectorPos.y,
-				detectorPos.x + detectorSize,
-				detectorPos.y + detectorSize
-			);
-
-			detectors.push(tileBox);
-
+	let {tileMap, detectors} = VectorUtilities.tileMapGenerator({
+		detectorSize: 0.9,
+		mapWidth: vectorMap.width + 1,
+		mapHeight: vectorMap.height + 1,
+		callback: (tileMap, point, detector) => {
 			for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
 				if(
-					vectorMap.walls[i].intersect(tileBox).length ||
-					vectorMap.walls[i].start.equalTo(new Point(x, y))
+					vectorMap.walls[i].intersect(detector).length ||
+					vectorMap.walls[i].start.equalTo(point)
 				) {
-					tileMap[y][x] = TILE_IDS.WALL;
+					tileMap[point.y][point.x] = TILE_IDS.WALL;
 					break;
 				}
 			}
 		}
-	}
+	});
 
 	return {tileMap, detectors};
 };
@@ -119,9 +106,11 @@ Vectorizer.sliceMap = (vectorMap, symmetry, disableDimensionRecalculation) => {
 		for (let i = mapWalls.length - 1; i >= 0; i--) {
 			let intersection;
 
+			// Detect if both ends of a segment are inside the safe-zone.
 			if(isPointSafe(mapWalls[i].start) && isPointSafe(mapWalls[i].end)) {
 				newMapWalls.push(mapWalls[i]);
 			} else if(intersection = mapWalls[i].intersect(sliceLine)){
+				// If the segment intersects with the safe-zone border, slice it inhalf.
 				if(intersection.length === 0) continue;
 
 				let slicedSegments = mapWalls[i].split(intersection[0]);
@@ -184,32 +173,13 @@ Vectorizer.reframeMap = vectorMap => {
 	return vectorMap.walls;
 };
 
-Vectorizer.roundMapPositions = vectorMap => {
-	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
-		vectorMap.walls[i].start = GeometryUtilities.roundPoint(vectorMap.walls[i].start);
-		vectorMap.walls[i].end = GeometryUtilities.roundPoint(vectorMap.walls[i].end);
-	}
-
-	return vectorMap.walls;
-};
-
-Vectorizer.calculateMapSize = vectorMap => {
-	let maxVector = new Vector(0, 0);
-
-	for (let i = vectorMap.walls.length - 1; i >= 0; i--) maxVector = GeometryUtilities.maxVector(
-		vectorMap.walls[i].start, 
-		vectorMap.walls[i].end,
-		maxVector
-	);
-
-	return GeometryUtilities.roundPoint(maxVector);
-};
-
 Vectorizer.fillWallHoles = (walls) => {
 	let newMapWalls = [];
 	const looseEnds = [];
 
 	let maxVector = new Vector(0, 0);
+
+	console.log(" ");
 
 	// Find the loose ends
 	// Loose ends are found by looking for segments that don't have 2 segments on either side of itself.
@@ -217,9 +187,12 @@ Vectorizer.fillWallHoles = (walls) => {
 		let startSegmentClosed = false;
 		let endSegmentClosed = false;
 
+		if(walls[i].length === 0) continue; // skip 0-length walls
+
 		for (let j = walls.length - 1; j >= 0; j--) {
 			// Don't match segment against itself
 			if(i === j) continue;
+			if(walls[j].length === 0) continue; // skip 0-length walls
 
 			if(walls[i].start.equalTo(walls[j].end)) startSegmentClosed = true;
 			if(walls[i].start.equalTo(walls[j].start)) startSegmentClosed = true;
@@ -238,6 +211,8 @@ Vectorizer.fillWallHoles = (walls) => {
 				segment: walls[i],
 				startIsLoose: !startSegmentClosed
 			});
+
+			console.log("loose end", walls[i]);
 		}
 
 		// Get size
@@ -282,6 +257,8 @@ Vectorizer.fillWallHoles = (walls) => {
 
 			looseEnds[i].used = true;
 			looseEnds[closestLoose.index].used = true;
+
+			console.log("closed");
 		}
 	}
 
