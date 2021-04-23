@@ -2,7 +2,7 @@
 **Tools &amp; Algorithms for AI-Generated TagPro Maps**
 
 ## Project
-This project contains many utilities for developing auto-mapmaking tools (Algorithms/ML).
+This project contains many utilities for developing auto-mapmaking tools (Algorithms or ML).
 The toolkit is able to convert normal TagPro maps into "VectorMaps", which contain the same information as normal tagpro maps.
 However, instead of being tile-based, VectorMaps are vector-based. Which means that element positions are floats,
 and walls are displayed as segments.
