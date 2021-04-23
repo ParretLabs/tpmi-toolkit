@@ -4,27 +4,24 @@ const prompt = require('prompt');
 
 const writeFile = util.promisify(fs.writeFile);
 
-const { Vectorizer, Randomizer, MapUtilities, Flatten, SETTINGS } = require('../../');
+const { Vectorizer, Randomizer, MapUtilities, VisualUtilities, Flatten, SETTINGS } = require('../../');
 
 const promptSchema = {
 	properties: {
 		mapID: {
 			description: 'Unfortunate Maps ID',
-			type: 'number',
 			pattern: /^[0-9]+$/,
 			message: 'ID can only contain digits',
 			default: 5436
 		},
 		noiseLevel: {
 			description: 'Noise Level',
-			type: 'number',
 			pattern: /^[0-9]+$/,
 			message: 'Noise must be a number',
 			default: 1
 		},
 		seed: {
 			description: 'Randomization Seed',
-			type: 'number',
 			pattern: /^[0-9]+$/,
 			message: 'Seed must be a number'
 		},
@@ -42,14 +39,19 @@ const promptSchema = {
 
 	prompt.start();
 	const settings = await prompt.get(promptSchema);
+	settings.noiseLevel = Number(settings.noiseLevel);
+	settings.seed = Number(settings.seed);
 
 	console.log("Retrieving map...");
 	let tileMap = await MapUtilities.mapIDToTileMap(settings.mapID);
+	
+	if(!tileMap) return console.error("Invalid Map ID");
 
 	let vectorMapOld = Vectorizer.createVectorMapFromTileMap(tileMap);
 	let vectorMapNew = vectorMapOld.clone();
 
 	let mapRandomizer = new Randomizer(settings.seed);
+	console.log("Seed: ", mapRandomizer.seed);
 
 	vectorMapNew.setWalls(mapRandomizer.additiveRandomizeWalls(
 		vectorMapNew.walls,
@@ -59,7 +61,13 @@ const promptSchema = {
 
 	if(settings.symmetry) vectorMapNew.symmetrize(settings.symmetry);
 
-	await writeFile(__dirname + "/map.html", vectorMapOld.visualize() + vectorMapNew.visualize());
+	let tileMapOld = vectorMapOld.tileMap();
+	let tileMapNew = vectorMapNew.tileMap();
+
+	let svgOld = VisualUtilities.visualizeWallMap(tileMapOld);
+	let svgNew = VisualUtilities.visualizeWallMap(tileMapNew);
+
+	await writeFile(__dirname + "/map.html", vectorMapOld.visualize() + vectorMapNew.visualize() + svgOld + svgNew);
 
 	console.log("Wrote preview file to " + __dirname + "/map.html");
 })();

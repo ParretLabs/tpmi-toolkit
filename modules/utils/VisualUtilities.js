@@ -1,5 +1,6 @@
 const path = require('path');
 const PNGImage = require('pngjs-image');
+const cheerio = require('cheerio');
 
 const { TILE_COLORS, TILE_IDS } = require('../SETTINGS');
 
@@ -7,11 +8,57 @@ let VisualUtilities = {};
 
 const IMAGES = [];
 
-Object.keys(TILE_IDS).forEach(key => {
-	IMAGES[TILE_IDS[key]] = loadImage(path.join(__dirname, `../assets/${key.toLowerCase()}.png`)).then(image => {
-		IMAGES[TILE_IDS[key]] = image;
-	});
-});
+// Object.keys(TILE_IDS).forEach(key => {
+// 	IMAGES[TILE_IDS[key]] = loadImage(path.join(__dirname, `../assets/${key.toLowerCase()}.png`)).then(image => {
+// 		IMAGES[TILE_IDS[key]] = image;
+// 	});
+// });
+
+VisualUtilities.visualizeVectorMap = vectorMap => {
+	const gridSVG = `<g>
+		<defs>
+			<pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
+				<rect width="1" height="1" fill="white"/>
+				<path d="M 1 0 L 0 0 0 1" fill="none" stroke="gray" stroke-width="0.1"/>
+			</pattern>
+		</defs>
+
+		<rect x="-0.5" y="-0.5" width="100%" height="100%" fill="url(#grid)" />
+	</g>`;
+	const wallSVG = `<g>${vectorMap.walls.map(w => {
+		let $line = cheerio.load(w.svg());
+
+		$line("line").attr("data-branch", w.branch);
+
+		return $line("line").parent().html();
+	}).join("").replace(/[\n\r]/g, "")}</g>`;
+
+	let $svg = cheerio.load("<body><svg></svg></body>");
+
+	$svg("svg").html($svg("svg").html() + gridSVG);
+
+	$svg("svg").html($svg("svg").html() + wallSVG);
+	$svg("line").attr("stroke-width", "0.1");
+	$svg("line").attr("stroke-linecap", "round");
+	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 2} ${vectorMap.height + 2}`);
+	$svg("svg").css("width", "50%");
+
+	return $svg.html();
+};
+
+VisualUtilities.visualizeBoxMap = boxMap => {
+	let svg = "";
+
+	for (let i = 0; i < boxMap.length; i++) {
+		svg += boxMap[i].svg();
+	}
+
+	let $svg = cheerio.load(`<body><svg viewBox="0 0 50 50" style="width: 50%">${svg}</svg></body>`);
+
+	$svg("rect").attr("stroke-width", "0.1");
+
+	return $svg("body").html();
+};
 
 VisualUtilities.visualizeWallMap = wallMap => {
 	let svg = "";

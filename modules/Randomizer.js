@@ -5,7 +5,8 @@ const GeometryUtilities = require('./utils/GeometryUtilities');
 
 class Randomizer {
 	constructor(seed) {
-		this.random = Utilities.seed(seed || Date.now());
+		this.seed = seed || Date.now();
+		this.random = Utilities.seed(this.seed);
 		this.randomInt = (min, max) => Utilities.getSeededRandomInt(this.random, min, max);
 	}
 

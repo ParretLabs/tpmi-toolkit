@@ -1,9 +1,11 @@
-const cheerio = require('cheerio');
-const { Point, Segment, Vector } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box } = require('@flatten-js/core');
 
 const Utilities = require('./utils/Utilities');
 const MapUtilities = require('./utils/MapUtilities');
-const { NEIGHBOR_VECTORS, SYMMETRY } = require('./SETTINGS');
+const GeometryUtilities = require('./utils/GeometryUtilities');
+const VisualUtilities = require('./utils/VisualUtilities');
+
+const { NEIGHBOR_VECTORS, SYMMETRY, TILE_IDS } = require('./SETTINGS');
 
 let Vectorizer = {};
 
@@ -15,8 +17,11 @@ Vectorizer.VectorMap = class VectorMap {
 
 		this.walls = walls;
 
-		this.recalculateSize();
+		this.normalize();
 	}
+
+	get width() {return this.size.x;}
+	get height() {return this.size.y;}
 
 	clone() {
 		return new Vectorizer.VectorMap({
@@ -24,35 +29,19 @@ Vectorizer.VectorMap = class VectorMap {
 		});
 	}
 
-	setWalls(walls, disableRecalculation) {
+	setWalls(walls, disableNormalization) {
 		this.walls = walls;
-		if(!disableRecalculation) this.recalculateSize();
+		if(!disableNormalization) this.normalize();
 	}
 
-	recalculateSize() {
-		let maxVector = new Vector(0, 0);
-
-		for (let i = this.walls.length - 1; i >= 0; i--) {
-			maxVector.x = Math.max(
-				this.walls[i].start.x,
-				this.walls[i].end.x,
-				maxVector.x
-			);
-
-			maxVector.y = Math.max(
-				this.walls[i].start.y,
-				this.walls[i].end.y,
-				maxVector.y
-			);
-		}
-
-		this.size = maxVector;
-
-		return maxVector;
+	normalize() {
+		Vectorizer.roundMapPositions(this);
+		Vectorizer.reframeMap(this);
+		this.size = Vectorizer.calculateMapSize(this);
 	}
 
 	symmetrize(symmetry) {
-		// Size recalculation is disabled so the dimensions stay the same.
+		// Normalization is disabled so the dimensions stay the same.
 		// This is required so that the mirroring is accurate.
 		Vectorizer.sliceMap(this, symmetry, true);
 		Vectorizer.mirrorMap(this, symmetry);
@@ -61,36 +50,12 @@ Vectorizer.VectorMap = class VectorMap {
 		return this;
 	}
 
+	tileMap() {
+		return Vectorizer.createTileMapFromVectorMap(this).tileMap;
+	}
+
 	visualize() {
-		const gridSVG = `<g>
-			<defs>
-				<pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
-					<rect width="1" height="1" fill="white"/>
-					<path d="M 1 0 L 0 0 0 1" fill="none" stroke="gray" stroke-width="0.1"/>
-				</pattern>
-			</defs>
-
-			<rect x="-0.5" y="-0.5" width="100%" height="100%" fill="url(#grid)" />
-		</g>`;
-		const wallSVG = `<g>${this.walls.map(w => {
-			let $line = cheerio.load(w.svg());
-
-			$line("line").attr("data-branch", w.branch);
-
-			return $line("line").parent().html();
-		}).join("").replace(/[\n\r]/g, "")}</g>`;
-
-		let $svg = cheerio.load("<body><svg></svg></body>");
-
-		$svg("svg").html($svg("svg").html() + gridSVG);
-
-		$svg("svg").html($svg("svg").html() + wallSVG);
-		$svg("line").attr("stroke-width", "0.5");
-		$svg("line").attr("stroke-linecap", "round");
-		$svg("svg").attr("viewBox", `-1 -1 ${this.size.x + 2} ${this.size.y + 2}`);
-		$svg("svg").css("width", "50%");
-
-		return $svg.html();
+		return VisualUtilities.visualizeVectorMap(this);
 	}
 };
 
@@ -104,6 +69,42 @@ Vectorizer.createVectorMapFromTileMap = tileMap => {
 	return vectorMap;
 };
 
+Vectorizer.createTileMapFromVectorMap = vectorMap => {
+	let tileMap = Utilities.createEmpty2dArray(vectorMap.width + 1, vectorMap.height + 1);
+	let detectorSize = 1;
+
+	let detectors = [];
+
+	// Iterate through every tile
+	// If a line exists on that tile, draw a wall there.
+	for (let y = 0; y < tileMap.length; y++) {
+		for (let x = 0; x < tileMap[0].length; x++) {
+			const detectorPos = new Point(x - (detectorSize / 2), y - (detectorSize / 2));
+
+			const tileBox = new Box(
+				detectorPos.x,
+				detectorPos.y,
+				detectorPos.x + detectorSize,
+				detectorPos.y + detectorSize
+			);
+
+			detectors.push(tileBox);
+
+			for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
+				if(
+					vectorMap.walls[i].intersect(tileBox).length ||
+					vectorMap.walls[i].start.equalTo(new Point(x, y))
+				) {
+					tileMap[y][x] = TILE_IDS.WALL;
+					break;
+				}
+			}
+		}
+	}
+
+	return {tileMap, detectors};
+};
+
 // Slices a vector map in half
 Vectorizer.sliceMap = (vectorMap, symmetry, disableDimensionRecalculation) => {
 	const mapWalls = vectorMap.walls;
@@ -112,8 +113,8 @@ Vectorizer.sliceMap = (vectorMap, symmetry, disableDimensionRecalculation) => {
 	if(symmetry === SYMMETRY.ROTATIONAL) {
 		// Rotational Symmetry Slicing function
 		// https://www.desmos.com/calculator/vvd4ga5com
-		const isPointSafe = point => ((vectorMap.size.y / vectorMap.size.x) * point.x) + point.y < vectorMap.size.y;
-		const sliceLine = new Segment(new Point(0, vectorMap.size.y), new Point(vectorMap.size.x, 0));
+		const isPointSafe = point => ((vectorMap.height / vectorMap.width) * point.x) + point.y < vectorMap.height;
+		const sliceLine = new Segment(new Point(0, vectorMap.height), new Point(vectorMap.width, 0));
 
 		for (let i = mapWalls.length - 1; i >= 0; i--) {
 			let intersection;
@@ -148,11 +149,11 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 			const segment1 = mapWalls[i].clone();
 			const segment2 = mapWalls[i].clone();
 
-			segment2.start.x = vectorMap.size.x - segment2.start.x;
-			segment2.start.y = vectorMap.size.y - segment2.start.y;
+			segment2.start.x = vectorMap.width - segment2.start.x;
+			segment2.start.y = vectorMap.height - segment2.start.y;
 
-			segment2.end.x = vectorMap.size.x - segment2.end.x;
-			segment2.end.y = vectorMap.size.y - segment2.end.y;
+			segment2.end.x = vectorMap.width - segment2.end.x;
+			segment2.end.y = vectorMap.height - segment2.end.y;
 
 			newMapWalls.push(segment1);
 			newMapWalls.push(segment2);
@@ -164,9 +165,51 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 	return newMapWalls;
 };
 
+// Pushes elements with negative positions back into the positive positions.
+Vectorizer.reframeMap = vectorMap => {
+	let translationVector = new Vector(0, 0);
+
+	for (let i = vectorMap.walls.length - 1; i >= 0; i--) translationVector = GeometryUtilities.minVector(
+		vectorMap.walls[i].start, 
+		vectorMap.walls[i].end,
+		translationVector
+	);
+
+	translationVector = new Vector(Math.abs(translationVector.x), Math.abs(translationVector.y));
+
+	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
+		vectorMap.walls[i] = vectorMap.walls[i].translate(translationVector);
+	}
+
+	return vectorMap.walls;
+};
+
+Vectorizer.roundMapPositions = vectorMap => {
+	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
+		vectorMap.walls[i].start = GeometryUtilities.roundPoint(vectorMap.walls[i].start);
+		vectorMap.walls[i].end = GeometryUtilities.roundPoint(vectorMap.walls[i].end);
+	}
+
+	return vectorMap.walls;
+};
+
+Vectorizer.calculateMapSize = vectorMap => {
+	let maxVector = new Vector(0, 0);
+
+	for (let i = vectorMap.walls.length - 1; i >= 0; i--) maxVector = GeometryUtilities.maxVector(
+		vectorMap.walls[i].start, 
+		vectorMap.walls[i].end,
+		maxVector
+	);
+
+	return GeometryUtilities.roundPoint(maxVector);
+};
+
 Vectorizer.fillWallHoles = (walls) => {
 	let newMapWalls = [];
 	const looseEnds = [];
+
+	let maxVector = new Vector(0, 0);
 
 	// Find the loose ends
 	// Loose ends are found by looking for segments that don't have 2 segments on either side of itself.
@@ -188,11 +231,17 @@ Vectorizer.fillWallHoles = (walls) => {
 		}
 
 		if(!startSegmentClosed || !endSegmentClosed) {
+			// Skip segments with small lengths
+			if(walls[i].length < 1) continue;
+
 			looseEnds.push({
 				segment: walls[i],
 				startIsLoose: !startSegmentClosed
 			});
 		}
+
+		// Get size
+		maxVector = GeometryUtilities.maxVector(walls[i].start, walls[i].end, maxVector);
 	}
 
 	// Iterate through the loose ends
@@ -206,7 +255,7 @@ Vectorizer.fillWallHoles = (walls) => {
 
 		let closestLoose = {
 			point: null,
-			distance: Infinity,
+			distance: Math.max(maxVector.x, maxVector.y) / 8,
 			index: -1
 		};
 
