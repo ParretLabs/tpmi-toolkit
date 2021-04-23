@@ -204,15 +204,14 @@ Vectorizer.fillWallHoles = (walls) => {
 		}
 
 		if(!startSegmentClosed || !endSegmentClosed) {
-			// Skip segments with small lengths
-			if(walls[i].length < 1) continue;
+			// Skip floating segments
+			// This function only tracks loose ends, not islands.
+			if(!startSegmentClosed && !endSegmentClosed) continue;
 
 			looseEnds.push({
 				segment: walls[i],
 				startIsLoose: !startSegmentClosed
 			});
-
-			console.log("loose end", walls[i]);
 		}
 
 		// Get size
