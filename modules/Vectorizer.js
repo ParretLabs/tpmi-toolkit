@@ -179,8 +179,6 @@ Vectorizer.fillWallHoles = (walls) => {
 
 	let maxVector = new Vector(0, 0);
 
-	console.log(" ");
-
 	// Find the loose ends
 	// Loose ends are found by looking for segments that don't have 2 segments on either side of itself.
 	for (let i = walls.length - 1; i >= 0; i--) {
@@ -223,7 +221,7 @@ Vectorizer.fillWallHoles = (walls) => {
 	// Find the best possible pair, draw a segment to fill the hole,
 	// then mark it as used.
 	for (let i = looseEnds.length - 1; i >= 0; i--) {
-		if(looseEnds[i].used) continue;
+		if(!looseEnds[i]) continue;
 
 		const loosePoint = looseEnds[i].startIsLoose ? looseEnds[i].segment.start : looseEnds[i].segment.end;
 
@@ -236,7 +234,7 @@ Vectorizer.fillWallHoles = (walls) => {
 		for (let j = looseEnds.length - 1; j >= 0; j--) {
 			// Don't match loose end against itself
 			if(i === j) continue;
-			if(looseEnds[j].used) continue;
+			if(!looseEnds[j]) continue;
 			
 			const loosePoint2 = looseEnds[j].startIsLoose ? looseEnds[j].segment.start : looseEnds[j].segment.end;
 
@@ -254,10 +252,8 @@ Vectorizer.fillWallHoles = (walls) => {
 				closestLoose.point
 			));
 
-			looseEnds[i].used = true;
-			looseEnds[closestLoose.index].used = true;
-
-			console.log("closed");
+			looseEnds.splice(i, 1);
+			looseEnds.splice(closestLoose.index, 1);
 		}
 	}
 
