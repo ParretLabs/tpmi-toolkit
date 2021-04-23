@@ -36,7 +36,6 @@ MapUtilities.imageToTileMap = image => {
 				return a.red === tileRGB[0] && a.green === tileRGB[1] && a.blue === tileRGB[2];
 			});
 			if(tileType === -1) {
-				// console.log(image.getColor(x, y), Utilities.hexToRGB(image.getColor(x, y)));
 				tileType = TILE_IDS.BACKGROUND;
 			}
 

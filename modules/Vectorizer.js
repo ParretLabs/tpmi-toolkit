@@ -71,7 +71,7 @@ Vectorizer.createVectorMapFromTileMap = tileMap => {
 
 Vectorizer.createTileMapFromVectorMap = vectorMap => {
 	let tileMap = Utilities.createEmpty2dArray(vectorMap.width + 1, vectorMap.height + 1);
-	let detectorSize = 1;
+	let detectorSize = 0.9;
 
 	let detectors = [];
 

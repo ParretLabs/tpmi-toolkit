@@ -7,7 +7,7 @@ GeometryUtilities.hashSegment = segment => {
 	return Utilities.hashNumberArray([segment.start.x, segment.start.y, segment.end.x, segment.end.y]);
 };
 
-GeometryUtilities.getLinePoints2 = (p0, p1) => {
+GeometryUtilities.getLinePointsAlt = (p0, p1) => {
 	let points = [];
 	let N = GeometryUtilities.diagonalDistance(p0, p1);
 	for (let step = 0; step <= N; step++) {
@@ -35,9 +35,6 @@ GeometryUtilities.getLinePoints = (p0, p1) => {
 			error = error - 1;
 		}
 	}
-
-	// console.log(points, p0.x, p1.x);
-	// if(points.length === 0) return GeometryUtilities.getLinePoints2(p0, p1);
 
 	return points;
 }

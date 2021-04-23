@@ -26,10 +26,10 @@ const promptSchema = {
 			message: 'Seed must be a number'
 		},
 		symmetry: {
-			description: 'Map Symmetry | (R)otational, "" for no symmetry',
+			description: 'Map Symmetry | (R)otational, (N)o symmetry',
 			pattern: /^[R ]+$/,
 			message: 'Invalid Symmetry',
-			default: ""
+			default: "R"
 		}
 	}
 };
@@ -44,7 +44,7 @@ const promptSchema = {
 
 	console.log("Retrieving map...");
 	let tileMap = await MapUtilities.mapIDToTileMap(settings.mapID);
-	
+
 	if(!tileMap) return console.error("Invalid Map ID");
 
 	let vectorMapOld = Vectorizer.createVectorMapFromTileMap(tileMap);
@@ -59,7 +59,7 @@ const promptSchema = {
 		new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
 	));
 
-	if(settings.symmetry) vectorMapNew.symmetrize(settings.symmetry);
+	if(settings.symmetry !== "N") vectorMapNew.symmetrize(settings.symmetry);
 
 	let tileMapOld = vectorMapOld.tileMap();
 	let tileMapNew = vectorMapNew.tileMap();
