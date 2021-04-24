@@ -1,5 +1,9 @@
+// VectorMap Utilities
+
 const { Point, Segment, Vector, Box } = require('@flatten-js/core');
 
+const { TILE_IDS, TEAMS } = require('../SETTINGS');
+const Elements = require('../types/Elements');
 const Utilities = require('./Utilities');
 const GeometryUtilities = require('./GeometryUtilities');
 
@@ -85,6 +89,54 @@ VectorUtilities.calculateMapSize = vectorMap => {
 	);
 
 	return GeometryUtilities.roundPoint(maxVector);
+};
+
+VectorUtilities.getVectorElementsFromTileMap = tileMap => {
+	let flags = [];
+
+	for (let y = 0; y < tileMap.length; y++) {
+		for (let x = 0; x < tileMap[0].length; x++) {
+			const isTile = id => tileMap[y][x] === id;
+
+			if(isTile(TILE_IDS.REDFLAG)) flags.push(new Elements.Flag(x, y, TEAMS.RED));
+			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag(x, y, TEAMS.BLUE));
+		}
+	}
+
+	return { flags };
+};
+
+VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
+	const newElements = [];
+
+	const [lA, lB, lC] = sliceLine.standard;
+	const isPointSafe = point => point.y < (lC - (lA * point.x)) / lB;
+
+	for (let i = elements.length - 1; i >= 0; i--) {
+		let intersection;
+
+		// Detect if both ends of a segment are inside the safe-zone.
+		if(elements[i].constructor.name === "Segment") {
+			if(isPointSafe(elements[i].start) && isPointSafe(elements[i].end)) {
+				newElements.push(elements[i]);
+			} else if(intersection = elements[i].intersect(sliceLine)){
+				// If the segment intersects with the safe-zone border, slice it inhalf.
+				if(intersection.length === 0) continue;
+
+				let slicedSegments = elements[i].split(intersection[0]);
+				let safeSlice = slicedSegments.find(s => s && (isPointSafe(s.start) || isPointSafe(s.end)));
+
+				if(safeSlice) newElements.push(safeSlice);
+			}
+		} else if(elements[i].point) {
+			const elementPoint = elements[i].point;
+			if(isPointSafe(elementPoint)) {
+				newElements.push(elements[i]);
+			}
+		}
+	}
+
+	return newElements;
 };
 
 module.exports = VectorUtilities;

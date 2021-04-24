@@ -1,4 +1,4 @@
-const { Point, Segment, Vector, Box } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box, Line } = require('@flatten-js/core');
 
 const Utilities = require('./utils/Utilities');
 const VectorUtilities = require('./utils/VectorUtilities');
@@ -12,10 +12,12 @@ let Vectorizer = {};
 
 Vectorizer.VectorMap = class VectorMap {
 	constructor({
-		walls
+		walls,
+		flags
 	}) {
 		this.size = null;
-		this.walls = walls;
+		this.walls = walls || [];
+		this.flags = flags || [];
 
 		this.pathFindingMap = null;
 
@@ -27,8 +29,15 @@ Vectorizer.VectorMap = class VectorMap {
 
 	clone() {
 		return new Vectorizer.VectorMap({
-			walls: this.walls.map(w => w.clone())
+			walls: this.walls.map(w => w.clone()),
+			flags: this.flags.map(f => f.clone())
 		});
+	}
+
+	set(elementsObj, disableNormalization) {
+		Object.assign(this, elementsObj);
+
+		if(!disableNormalization) this.normalize();
 	}
 
 	setWalls(walls, disableNormalization) {
@@ -47,6 +56,7 @@ Vectorizer.VectorMap = class VectorMap {
 		// This is required so that the mirroring is accurate.
 		Vectorizer.sliceMap(this, symmetry, true);
 		Vectorizer.mirrorMap(this, symmetry);
+
 		this.setWalls(Vectorizer.fillWallHoles(this.walls));
 
 		return this;
@@ -63,9 +73,11 @@ Vectorizer.VectorMap = class VectorMap {
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
+	const { flags } = VectorUtilities.getVectorElementsFromTileMap(tileMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
-		walls: Vectorizer.getLinesFromWallMap(wallMap)
+		walls: Vectorizer.getLinesFromWallMap(wallMap),
+		flags
 	});
 
 	return vectorMap;
@@ -93,39 +105,22 @@ Vectorizer.createTileMapFromVectorMap = vectorMap => {
 };
 
 // Slices a vector map in half
-Vectorizer.sliceMap = (vectorMap, symmetry, disableDimensionRecalculation) => {
-	const mapWalls = vectorMap.walls;
-	const newMapWalls = [];
+Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
+	let sliceLine = new Line(new Point(0, 0), new Point(1, 0));
 
 	if(symmetry === SYMMETRY.ROTATIONAL) {
-		// Rotational Symmetry Slicing function
-		// https://www.desmos.com/calculator/vvd4ga5com
-		const isPointSafe = point => ((vectorMap.height / vectorMap.width) * point.x) + point.y < vectorMap.height;
-		const sliceLine = new Segment(new Point(0, vectorMap.height), new Point(vectorMap.width, 0));
-
-		for (let i = mapWalls.length - 1; i >= 0; i--) {
-			let intersection;
-
-			// Detect if both ends of a segment are inside the safe-zone.
-			if(isPointSafe(mapWalls[i].start) && isPointSafe(mapWalls[i].end)) {
-				newMapWalls.push(mapWalls[i]);
-			} else if(intersection = mapWalls[i].intersect(sliceLine)){
-				// If the segment intersects with the safe-zone border, slice it inhalf.
-				if(intersection.length === 0) continue;
-
-				let slicedSegments = mapWalls[i].split(intersection[0]);
-				let safeSlice = slicedSegments.find(s => s && (isPointSafe(s.start) || isPointSafe(s.end)));
-
-				if(safeSlice) newMapWalls.push(safeSlice);
-
-				// console.log("sliced", mapWalls[i], slicedSegments, safeSlice);
-			}
-		}
+		sliceLine = new Line(new Point(0, vectorMap.height), new Point(vectorMap.width, 0));
 	}
 
-	vectorMap.setWalls(newMapWalls, disableDimensionRecalculation);
+	let newMapWalls = VectorUtilities.sliceVectorElements(vectorMap.walls, sliceLine);
+	let newMapFlags = VectorUtilities.sliceVectorElements(vectorMap.flags, sliceLine);
 
-	return newMapWalls;
+	vectorMap.set({
+		walls: newMapWalls,
+		flags: newMapFlags
+	}, disableNormalization);
+
+	return vectorMap;
 };
 
 // Mirrors a map

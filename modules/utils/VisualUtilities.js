@@ -25,21 +25,26 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 
 		<rect x="-0.5" y="-0.5" width="100%" height="100%" fill="url(#grid)" />
 	</g>`;
-	const wallSVG = `<g>${vectorMap.walls.map(w => {
+	const wallSVG = VisualUtilities.groupSVGElements(vectorMap.walls.map(w => {
 		let $line = cheerio.load(w.svg());
 
 		$line("line").attr("data-branch", w.branch);
 
 		return $line("line").parent().html();
-	}).join("").replace(/[\n\r]/g, "")}</g>`;
+	}));
+	const flagSVG = VisualUtilities.groupSVGElements(vectorMap.flags.map(f => f.visualize()));
 
 	let $svg = cheerio.load("<body><svg></svg></body>");
 
 	$svg("svg").html($svg("svg").html() + gridSVG);
 
 	$svg("svg").html($svg("svg").html() + wallSVG);
-	$svg("line").attr("stroke-width", "0.1");
+
+	$svg("svg").html($svg("svg").html() + flagSVG);
+
+	$svg("line").attr("stroke-width", "0.25");
 	$svg("line").attr("stroke-linecap", "round");
+
 	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 2} ${vectorMap.height + 2}`);
 	$svg("svg").css("width", "50%");
 
@@ -71,6 +76,8 @@ VisualUtilities.visualizeWallMap = wallMap => {
 
 	return `<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}" style="width: 50%">${svg}</svg>`;
 };
+
+VisualUtilities.groupSVGElements = svgs => `<g>${svgs.join("").replace(/[\n\r]/g, "")}</g>`;
 
 VisualUtilities.createImageFromMap = map => {
 	return new Promise(function(resolve, reject) {

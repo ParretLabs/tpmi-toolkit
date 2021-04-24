@@ -27,7 +27,7 @@ const promptSchema = {
 		},
 		symmetry: {
 			description: 'Map Symmetry | (R)otational, (N)o symmetry',
-			pattern: /^[R ]+$/,
+			pattern: /^[RN]+$/,
 			message: 'Invalid Symmetry',
 			default: "R"
 		}
@@ -53,11 +53,14 @@ const promptSchema = {
 	let mapRandomizer = new Randomizer(settings.seed);
 	console.log("Seed: ", mapRandomizer.seed);
 
+	// Slice the map, but keep the old dimensions
+	if(settings.symmetry !== "N") Vectorizer.sliceMap(vectorMapNew, settings.symmetry, true);
+
 	vectorMapNew.setWalls(mapRandomizer.additiveRandomizeWalls(
 		vectorMapNew.walls,
 		new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
 		new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
-	));
+	), true);
 
 	if(settings.symmetry !== "N") vectorMapNew.symmetrize(settings.symmetry);
 

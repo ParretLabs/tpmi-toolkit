@@ -63,4 +63,10 @@ const SYMMETRY = {
 	FOURWAY: "F"
 };
 
-module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS, SYMMETRY };
+const TEAMS = {
+	NONE: 0,
+	RED: 1,
+	BLUE: 2
+};
+
+module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS, SYMMETRY, TEAMS };
