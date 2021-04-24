@@ -139,4 +139,28 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 	return newElements;
 };
 
+VectorUtilities.mirrorVectorElements = (elements, mirrorFunc) => {
+	const newElements = [];
+
+	for (let i = elements.length - 1; i >= 0; i--) {
+		const element1 = elements[i].clone();
+		const element2 = elements[i].clone();
+
+		if(elements[i].constructor.name === "Segment") {
+			element2.start = mirrorFunc(element2.start);
+			element2.end = mirrorFunc(element2.end);
+
+			newElements.push(element1);
+			newElements.push(element2);
+		} else if(elements[i].point) {
+			element2.point = mirrorFunc(element2.point);
+
+			newElements.push(element1);
+			newElements.push(element2);
+		}
+	}
+
+	return newElements;
+};
+
 module.exports = VectorUtilities;

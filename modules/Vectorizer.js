@@ -125,26 +125,19 @@ Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
 
 // Mirrors a map
 Vectorizer.mirrorMap = (vectorMap, symmetry) => {
-	const mapWalls = vectorMap.walls;
-	const newMapWalls = [];
+	let mirrorFunc = p => p;
 
 	if(symmetry === SYMMETRY.ROTATIONAL) {
-		for (let i = mapWalls.length - 1; i >= 0; i--) {
-			const segment1 = mapWalls[i].clone();
-			const segment2 = mapWalls[i].clone();
-
-			segment2.start.x = vectorMap.width - segment2.start.x;
-			segment2.start.y = vectorMap.height - segment2.start.y;
-
-			segment2.end.x = vectorMap.width - segment2.end.x;
-			segment2.end.y = vectorMap.height - segment2.end.y;
-
-			newMapWalls.push(segment1);
-			newMapWalls.push(segment2);
-		}
+		mirrorFunc = p => new Point(vectorMap.width - p.x, vectorMap.height - p.y);
 	}
 
-	vectorMap.setWalls(newMapWalls);
+	let newMapWalls = VectorUtilities.mirrorVectorElements(vectorMap.walls, mirrorFunc);
+	let newMapFlags = VectorUtilities.mirrorVectorElements(vectorMap.flags, mirrorFunc);
+
+	vectorMap.set({
+		walls: newMapWalls,
+		flags: newMapFlags
+	});
 
 	return newMapWalls;
 };
