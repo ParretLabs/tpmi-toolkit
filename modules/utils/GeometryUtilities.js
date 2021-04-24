@@ -1,10 +1,19 @@
-const { Point, Vector } = require('@flatten-js/core');
+const { Point, Vector, PlanarSet } = require('@flatten-js/core');
 const Utilities = require('./Utilities');
 
 let GeometryUtilities = {};
 
 GeometryUtilities.hashSegment = segment => {
 	return Utilities.hashNumberArray([segment.start.x, segment.start.y, segment.end.x, segment.end.y]);
+};
+
+// There seems to be a bug in flatten.js that doesn't allow PlanarSet's to be created normally through:
+// "new PlanarSet(shapes)". This function exists as a workaround.
+GeometryUtilities.createPlanarSet = shapes => {
+	let planarSet = new PlanarSet();
+	shapes.forEach(shape => planarSet.add(shape));
+
+	return planarSet;
 };
 
 GeometryUtilities.getLinePointsAlt = (p0, p1) => {

@@ -48,9 +48,9 @@ VectorUtilities.tileMapGenerator = (inputSettings={}) => {
 VectorUtilities.generatePlanarSetFromElementArrays = (...elementArrays) => {
 	let shapes = [
 		...[...elementArrays.map(a => a.map(e => e.point || e))]
-	];
-
-	return new PlanarSet(shapes);
+	].flat();
+	
+	return GeometryUtilities.createPlanarSet(shapes);
 };
 
 // Moves all wall segments at a point to another point.
