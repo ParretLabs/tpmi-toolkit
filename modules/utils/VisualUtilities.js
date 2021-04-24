@@ -32,7 +32,9 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 
 		return $line("line").parent().html();
 	}));
-	const flagSVG = VisualUtilities.groupSVGElements(vectorMap.flags.map(f => f.visualize()));
+	let elementsSVG = ["flags", "bombs", "spikes"].reduce((acc, val) => {
+		return acc + VisualUtilities.groupSVGElements(vectorMap[val].map(e => e.visualize()));
+	}, "");
 
 	let $svg = cheerio.load("<body><svg></svg></body>");
 
@@ -40,7 +42,7 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 
 	$svg("svg").html($svg("svg").html() + wallSVG);
 
-	$svg("svg").html($svg("svg").html() + flagSVG);
+	$svg("svg").html($svg("svg").html() + elementsSVG);
 
 	$svg("line").attr("stroke-width", "0.25");
 	$svg("line").attr("stroke-linecap", "round");

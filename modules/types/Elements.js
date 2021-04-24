@@ -16,11 +16,11 @@ Elements.BaseElement = class BaseElement {
 	}
 
 	clone() {
-		return new Elements.BaseElement(this.x, this.y);
+		return new Elements[this.constructor.name](this.x, this.y);
 	}
 };
 
-Elements.Flag = class FlagElement extends Elements.BaseElement {
+Elements.Flag = class Flag extends Elements.BaseElement {
 	constructor(x, y, team){
 		super(x, y);
 
@@ -36,7 +36,35 @@ Elements.Flag = class FlagElement extends Elements.BaseElement {
 	}
 
 	clone() {
-		return new Elements.Flag(this.x, this.y, this.team);
+		return new Elements[this.constructor.name](this.x, this.y, this.team);
+	}
+}
+
+Elements.Spike = class Spike extends Elements.BaseElement {
+	constructor(x, y){
+		super(x, y);
+	}
+
+	visualize() {
+		return this.point.svg({
+			r: 0.5,
+			strokeWidth: 0.1,
+			fill: "gray"
+		});
+	}
+}
+
+Elements.Bomb = class Bomb extends Elements.BaseElement {
+	constructor(x, y){
+		super(x, y);
+	}
+
+	visualize() {
+		return this.point.svg({
+			r: 0.5,
+			strokeWidth: 0.1,
+			fill: "black"
+		});
 	}
 }
 

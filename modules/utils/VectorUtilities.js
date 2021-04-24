@@ -93,6 +93,8 @@ VectorUtilities.calculateMapSize = vectorMap => {
 
 VectorUtilities.getVectorElementsFromTileMap = tileMap => {
 	let flags = [];
+	let spikes = [];
+	let bombs = [];
 
 	for (let y = 0; y < tileMap.length; y++) {
 		for (let x = 0; x < tileMap[0].length; x++) {
@@ -100,10 +102,12 @@ VectorUtilities.getVectorElementsFromTileMap = tileMap => {
 
 			if(isTile(TILE_IDS.REDFLAG)) flags.push(new Elements.Flag(x, y, TEAMS.RED));
 			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag(x, y, TEAMS.BLUE));
+			else if(isTile(TILE_IDS.SPIKE)) spikes.push(new Elements.Spike(x, y));
+			else if(isTile(TILE_IDS.BOMB)) bombs.push(new Elements.Bomb(x, y));
 		}
 	}
 
-	return { flags };
+	return { flags, spikes, bombs };
 };
 
 VectorUtilities.sliceVectorElements = (elements, sliceLine) => {

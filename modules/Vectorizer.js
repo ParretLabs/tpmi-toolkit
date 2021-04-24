@@ -13,11 +13,15 @@ let Vectorizer = {};
 Vectorizer.VectorMap = class VectorMap {
 	constructor({
 		walls,
-		flags
+		flags,
+		spikes,
+		bombs
 	}) {
 		this.size = null;
 		this.walls = walls || [];
 		this.flags = flags || [];
+		this.spikes = spikes || [];
+		this.bombs = bombs || [];
 
 		this.pathFindingMap = null;
 
@@ -30,7 +34,9 @@ Vectorizer.VectorMap = class VectorMap {
 	clone() {
 		return new Vectorizer.VectorMap({
 			walls: this.walls.map(w => w.clone()),
-			flags: this.flags.map(f => f.clone())
+			flags: this.flags.map(f => f.clone()),
+			spikes: this.spikes.map(s => s.clone()),
+			bombs: this.bombs.map(b => b.clone())
 		});
 	}
 
@@ -70,17 +76,18 @@ Vectorizer.VectorMap = class VectorMap {
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
-	const { flags } = VectorUtilities.getVectorElementsFromTileMap(tileMap);
+	const { flags, bombs, spikes } = VectorUtilities.getVectorElementsFromTileMap(tileMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
 		walls: Vectorizer.getLinesFromWallMap(wallMap),
-		flags
+		flags, bombs, spikes
 	});
 
 	return vectorMap;
 };
 
 Vectorizer.createTileMapFromVectorMap = vectorMap => {
+	// Can be optimized using a planar set.
 	let {tileMap, detectors} = VectorUtilities.tileMapGenerator({
 		detectorSize: 0.9,
 		mapWidth: vectorMap.width + 1,
@@ -109,13 +116,15 @@ Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
 		sliceLine = new Line(new Point(0, vectorMap.height), new Point(vectorMap.width, 0));
 	}
 
-	let newMapWalls = VectorUtilities.sliceVectorElements(vectorMap.walls, sliceLine);
-	let newMapFlags = VectorUtilities.sliceVectorElements(vectorMap.flags, sliceLine);
+	// Slice all the different types of elements.
+	let sliceableElements = ["walls", "flags", "bombs", "spikes"];
+	let newElements = {};
 
-	vectorMap.set({
-		walls: newMapWalls,
-		flags: newMapFlags
-	}, disableNormalization);
+	for (let i = sliceableElements.length - 1; i >= 0; i--) {
+		newElements[sliceableElements[i]] = VectorUtilities.sliceVectorElements(vectorMap[sliceableElements[i]], sliceLine);
+	}
+
+	vectorMap.set(newElements, disableNormalization);
 
 	return vectorMap;
 };
@@ -129,15 +138,18 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 	}
 
 	let newMapWalls = VectorUtilities.mirrorVectorElements(vectorMap.walls, mirrorFunc);
-
 	// Set the walls and recalculate the map size so that the remaining elements are correctly mirrored.
 	vectorMap.set({ walls: newMapWalls });
 
-	let newMapFlags = VectorUtilities.mirrorVectorElements(vectorMap.flags, mirrorFunc);
+	// Mirror all the different types of elements.
+	let mirrorableElements = ["flags", "bombs", "spikes"];
+	let newElements = {};
 
-	vectorMap.set({
-		flags: newMapFlags
-	});
+	for (let i = mirrorableElements.length - 1; i >= 0; i--) {
+		newElements[mirrorableElements[i]] = VectorUtilities.mirrorVectorElements(vectorMap[mirrorableElements[i]], mirrorFunc);
+	}
+
+	vectorMap.set(newElements);
 
 	return newMapWalls;
 };
