@@ -21,22 +21,22 @@ Elements.BaseElement = class BaseElement {
 };
 
 Elements.Flag = class FlagElement extends Elements.BaseElement {
-	constructor(x, y, type){
+	constructor(x, y, team){
 		super(x, y);
 
-		this.type = type;
+		this.team = team;
 	}
 
 	visualize() {
 		return this.point.svg({
 			r: 0.5,
 			strokeWidth: 0.1,
-			fill: this.type === TEAMS.RED ? "red" : "blue"
+			fill: this.team === TEAMS.RED ? "red" : "blue"
 		});
 	}
 
 	clone() {
-		return new Elements.Flag(this.x, this.y, this.type);
+		return new Elements.Flag(this.x, this.y, this.team);
 	}
 }
 

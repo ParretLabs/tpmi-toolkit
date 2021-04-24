@@ -56,11 +56,13 @@ const promptSchema = {
 	// Slice the map, but keep the old dimensions
 	if(settings.symmetry !== "N") Vectorizer.sliceMap(vectorMapNew, settings.symmetry, true);
 
-	vectorMapNew.setWalls(mapRandomizer.additiveRandomizeWalls(
-		vectorMapNew.walls,
-		new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
-		new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
-	), true);
+	vectorMapNew.set({
+		walls: mapRandomizer.additiveRandomizeWalls(
+			vectorMapNew.walls,
+			new Flatten.Vector(-settings.noiseLevel, -settings.noiseLevel),
+			new Flatten.Vector(settings.noiseLevel, settings.noiseLevel)
+		)
+	}, true);
 
 	if(settings.symmetry !== "N") vectorMapNew.symmetrize(settings.symmetry);
 

@@ -40,11 +40,6 @@ Vectorizer.VectorMap = class VectorMap {
 		if(!disableNormalization) this.normalize();
 	}
 
-	setWalls(walls, disableNormalization) {
-		this.walls = walls;
-		if(!disableNormalization) this.normalize();
-	}
-
 	normalize() {
 		VectorUtilities.roundMapPositions(this);
 		Vectorizer.reframeMap(this);
@@ -57,7 +52,9 @@ Vectorizer.VectorMap = class VectorMap {
 		Vectorizer.sliceMap(this, symmetry, true);
 		Vectorizer.mirrorMap(this, symmetry);
 
-		this.setWalls(Vectorizer.fillWallHoles(this.walls));
+		this.set({
+			walls: Vectorizer.fillWallHoles(this.walls)
+		});
 
 		return this;
 	}
@@ -132,10 +129,13 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 	}
 
 	let newMapWalls = VectorUtilities.mirrorVectorElements(vectorMap.walls, mirrorFunc);
+
+	// Set the walls and recalculate the map size so that the remaining elements are correctly mirrored.
+	vectorMap.set({ walls: newMapWalls });
+
 	let newMapFlags = VectorUtilities.mirrorVectorElements(vectorMap.flags, mirrorFunc);
 
 	vectorMap.set({
-		walls: newMapWalls,
 		flags: newMapFlags
 	});
 
@@ -144,14 +144,7 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 
 // Pushes elements with negative positions back into the positive positions.
 Vectorizer.reframeMap = vectorMap => {
-	let translationVector = new Vector(0, 0);
-
-	for (let i = vectorMap.walls.length - 1; i >= 0; i--) translationVector = GeometryUtilities.minVector(
-		vectorMap.walls[i].start, 
-		vectorMap.walls[i].end,
-		translationVector
-	);
-
+	let translationVector = VectorUtilities.findSmallestElementVector(vectorMap.walls);
 	translationVector = new Vector(Math.abs(translationVector.x), Math.abs(translationVector.y));
 
 	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {

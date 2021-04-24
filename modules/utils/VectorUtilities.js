@@ -139,21 +139,34 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 	return newElements;
 };
 
+VectorUtilities.findSmallestElementVector = (wallSegments) => {
+	let translationVector = new Vector(0, 0);
+
+	for (let i = wallSegments.length - 1; i >= 0; i--) translationVector = GeometryUtilities.minVector(
+		wallSegments[i].start, 
+		wallSegments[i].end,
+		translationVector
+	);
+
+	return translationVector;
+};
+
 VectorUtilities.mirrorVectorElements = (elements, mirrorFunc) => {
 	const newElements = [];
 
 	for (let i = elements.length - 1; i >= 0; i--) {
 		const element1 = elements[i].clone();
-		const element2 = elements[i].clone();
+		let element2 = elements[i].clone();
 
 		if(elements[i].constructor.name === "Segment") {
-			element2.start = mirrorFunc(element2.start);
-			element2.end = mirrorFunc(element2.end);
+			element2 = new Segment(mirrorFunc(element2.start), mirrorFunc(element2.end));
 
 			newElements.push(element1);
 			newElements.push(element2);
 		} else if(elements[i].point) {
 			element2.point = mirrorFunc(element2.point);
+
+			if(element2.team) element2.team = element2.team === TEAMS.RED ? TEAMS.BLUE : TEAMS.RED;
 
 			newElements.push(element1);
 			newElements.push(element2);
