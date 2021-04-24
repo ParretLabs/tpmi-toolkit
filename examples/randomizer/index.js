@@ -5,6 +5,7 @@ const prompt = require('prompt');
 const writeFile = util.promisify(fs.writeFile);
 
 const { Vectorizer, Randomizer, MapUtilities, VisualUtilities, Flatten, SETTINGS } = require('../../');
+const { Timer } = require('../ExampleUtilities');
 
 const promptSchema = {
 	properties: {
@@ -35,6 +36,7 @@ const promptSchema = {
 };
 
 (async () => {
+	let timer = new Timer();
 	console.log("TPMI Toolkit - Randomizer - Wall Randomizer");
 
 	prompt.start();
@@ -43,10 +45,14 @@ const promptSchema = {
 	settings.seed = Number(settings.seed);
 
 	console.log("Retrieving map...");
+	timer.start();
 	let tileMap = await MapUtilities.mapIDToTileMap(settings.mapID);
-
 	if(!tileMap) return console.error("Invalid Map ID");
 
+	console.log("Retrieved map in ", timer.stop() + "ms");
+
+	console.log("Creating maps...");
+	timer.start();
 	let vectorMapOld = Vectorizer.createVectorMapFromTileMap(tileMap);
 	let vectorMapNew = vectorMapOld.clone();
 
@@ -68,6 +74,8 @@ const promptSchema = {
 
 	let tileMapOld = vectorMapOld.tileMap();
 	let tileMapNew = vectorMapNew.tileMap();
+
+	console.log("Finished creating maps in ", timer.stop() + "ms");
 
 	let svgOld = VisualUtilities.visualizeWallMap(tileMapOld);
 	let svgNew = VisualUtilities.visualizeWallMap(tileMapNew);
