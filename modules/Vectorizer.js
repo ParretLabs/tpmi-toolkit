@@ -23,6 +23,7 @@ Vectorizer.VectorMap = class VectorMap {
 		this.spikes = spikes || [];
 		this.bombs = bombs || [];
 
+		this.planarSets = null;
 		this.pathFindingMap = null;
 
 		this.normalize();
@@ -46,10 +47,14 @@ Vectorizer.VectorMap = class VectorMap {
 		if(!disableNormalization) this.normalize();
 	}
 
+	// Recalculates map properties
 	normalize() {
 		VectorUtilities.roundMapPositions(this);
 		Vectorizer.reframeMap(this);
+
 		this.size = VectorUtilities.calculateMapSize(this);
+		this.planarSets = VectorUtilities.generatePlanarSetsFromVectorMap(this);
+		this.pathFindingMap = Vectorizer.generatePathFindingMap(this).tileMap;
 	}
 
 	symmetrize(symmetry) {
@@ -106,6 +111,49 @@ Vectorizer.createTileMapFromVectorMap = vectorMap => {
 	});
 
 	return {tileMap, detectors};
+};
+
+Vectorizer.generatePathFindingMap = vectorMap => {
+	let {tileMap, detectors} = VectorUtilities.tileMapGenerator({
+		detectorSize: 0.9,
+		mapWidth: vectorMap.width,
+		mapHeight: vectorMap.height,
+		callback: (tileMap, point, detector) => {
+			if(vectorMap.planarSets.immpassible.search(detector)) {
+				tileMap[point.y][point.x] = 1;
+			} else if(vectorMap.planarSets.semipassible.search(detector)) {
+				tileMap[point.y][point.x] = 2;
+			}
+		}
+	});
+
+	return {tileMap, detectors};
+};
+
+VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
+	let planarSets = {};
+
+	// Puts all impassible-type element shapes into a planar set
+	planarSets.immpassible = VectorUtilities.generatePlanarSetFromElementArrays(
+		vectorMap.walls,
+		vectorMap.spikes
+	);
+
+	// Puts all semipassible-type element shapes into a planar set
+	planarSets.semipassible = VectorUtilities.generatePlanarSetFromElementArrays(
+		vectorMap.flags,
+		vectorMap.bombs
+	);
+
+	// Puts all element shapes into a planar set
+	planarSets.all = VectorUtilities.generatePlanarSetFromElementArrays(
+		vectorMap.walls,
+		vectorMap.spikes,
+		vectorMap.flags,
+		vectorMap.bombs
+	);
+
+	return planarSets;
 };
 
 // Slices a vector map in half

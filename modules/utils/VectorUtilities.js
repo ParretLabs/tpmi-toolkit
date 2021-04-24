@@ -1,6 +1,6 @@
 // VectorMap Utilities
 
-const { Point, Segment, Vector, Box } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box, PlanarSet } = require('@flatten-js/core');
 
 const { TILE_IDS, TEAMS } = require('../SETTINGS');
 const Elements = require('../types/Elements');
@@ -42,6 +42,15 @@ VectorUtilities.tileMapGenerator = (inputSettings={}) => {
 		tileMap,
 		detectors,
 	};
+};
+
+// Converts an array of element arrays into a singular planar set.
+VectorUtilities.generatePlanarSetFromElementArrays = (...elementArrays) => {
+	let shapes = [
+		...[...elementArrays.map(a => a.map(e => e.point || e))]
+	];
+
+	return new PlanarSet(shapes);
 };
 
 // Moves all wall segments at a point to another point.
