@@ -1,3 +1,6 @@
+// Second-level Utility (Can only require first-level utilities)
+// For working with tile-based maps
+
 const PNGImage = require('pngjs-image');
 const { Point } = require('@flatten-js/core');
 

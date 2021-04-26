@@ -330,12 +330,7 @@ Vectorizer.getLinesFromWallMap = wallMap => {
 	function traceMapFromLines(currentLines, branchTracker, settings) {
 		let newLines = [];
 
-		// console.log(currentLines.length);
-
 		for (let i = currentLines.length - 1; i >= 0; i--) {
-			// console.log(currentLines[i]);
-			// console.log(currentLines[i].segment.end, MapUtilities.getTile(wallMap, currentLines[i].segment.end.x, currentLines[i].segment.end.y));
-
 			let traceResults = Vectorizer.traceLinesFromPoint(wallMap, currentLines[i].segment.end, settings);
 
 			newLines = newLines.concat(traceResults);

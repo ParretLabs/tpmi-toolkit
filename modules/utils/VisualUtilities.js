@@ -1,3 +1,5 @@
+// Second-level Utility (Can only require first-level utilities)
+
 const path = require('path');
 const PNGImage = require('pngjs-image');
 const cheerio = require('cheerio');
@@ -29,6 +31,7 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 		let $line = cheerio.load(w.svg());
 
 		$line("line").attr("data-branch", w.branch);
+		$line("line").attr("class", "wall");
 
 		return $line("line").parent().html();
 	}));
@@ -36,22 +39,31 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 		return acc + VisualUtilities.groupSVGElements(vectorMap[val].map(e => e.visualize()));
 	}, "");
 
-	let $svg = cheerio.load("<body><svg></svg></body>");
+	let $svg = cheerio.load(VisualUtilities.appendToSVGDoc(
+		`<body><svg></svg></body>`,
+		gridSVG,
+		wallSVG,
+		elementsSVG
+	));
 
-	$svg("svg").html($svg("svg").html() + gridSVG);
-
-	$svg("svg").html($svg("svg").html() + wallSVG);
-
-	$svg("svg").html($svg("svg").html() + elementsSVG);
-
-	$svg("line").attr("stroke-width", "0.25");
-	$svg("line").attr("stroke-linecap", "round");
+	$svg(".wall").attr("stroke-width", "0.25");
+	$svg(".wall").attr("stroke-linecap", "round");
 
 	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 2} ${vectorMap.height + 2}`);
 	$svg("svg").css("width", "50%");
 
 	return $svg.html();
 };
+
+VisualUtilities.appendToSVGDoc = (mainDoc, ...partials) => {
+	let $svg = cheerio.load(mainDoc);
+
+	for (let i = 0; i < partials.length; i++) {
+		$svg("svg").html($svg("svg").html() + partials[i]);
+	}
+
+	return $svg("svg").parent().html();
+}
 
 VisualUtilities.visualizeBoxMap = boxMap => {
 	let svg = "";

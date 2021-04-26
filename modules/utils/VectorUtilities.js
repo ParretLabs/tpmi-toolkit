@@ -1,4 +1,5 @@
-// VectorMap Utilities
+// Third-Level Utility (Can access Second-level utilities)
+// For working with VectorMaps
 
 const { Point, Segment, Vector, Box, PlanarSet } = require('@flatten-js/core');
 
@@ -24,13 +25,9 @@ VectorUtilities.tileMapGenerator = (inputSettings={}) => {
 
 	for (let y = 0; y < settings.mapHeight; y++) {
 		for (let x = 0; x < settings.mapWidth; x++) {
-			const detectorPos = new Point(x - (settings.detectorSize / 2), y - (settings.detectorSize / 2));
-			const tileBoxDetector = new Box(
-				detectorPos.x,
-				detectorPos.y,
-				detectorPos.x + settings.detectorSize,
-				detectorPos.y + settings.detectorSize
-			);
+			const tileBoxDetector = GeometryUtilities.createDetector(new Point(x, y), {
+				size: settings.detectorSize
+			});
 
 			detectors.push(tileBoxDetector);
 
@@ -188,5 +185,10 @@ VectorUtilities.mirrorVectorElements = (elements, mirrorFunc) => {
 
 	return newElements;
 };
+
+VectorUtilities.getFlagPair = flags => [
+	flags.find(a => a.team === TEAMS.RED),
+	flags.find(a => a.team === TEAMS.BLUE)
+];
 
 module.exports = VectorUtilities;

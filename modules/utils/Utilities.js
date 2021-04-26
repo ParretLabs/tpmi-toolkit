@@ -1,3 +1,6 @@
+// First-Level Utility (Should never require any other utilities)
+// General Utilities
+
 const {TILE_COLORS, TILE_IDS} = require('../SETTINGS');
 
 let Utilities = {};
