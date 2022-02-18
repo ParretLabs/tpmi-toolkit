@@ -208,9 +208,6 @@ Vectorizer.symmetrizeMap = (vectorMap, symmetry) => {
 Vectorizer.reframeElements = elements => {
 	let translationVector = VectorUtilities.getMinVectorFromElements(elements);
 	translationVector = translationVector.multiply(-1);
-
-	console.log(translationVector);
-
 	for (let i = elements.length - 1; i >= 0; i--) {
 		const element = elements[i];
 
