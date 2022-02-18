@@ -1,7 +1,7 @@
 // First-Level Utility (Should never require any other utilities)
 // General Utilities
 
-const {TILE_COLORS, TILE_IDS} = require('../SETTINGS');
+const {TILE_COLORS, TILE_IDS} = require('../CONSTANTS');
 
 let Utilities = {};
 
@@ -35,6 +35,8 @@ Utilities.getSeededRandomInt = (randomFunc, min, max) => {
 	max = Math.floor(max);
 	return Math.floor(randomFunc() * (max - min)) + min; // The maximum is exclusive and the minimum is inclusive
 }
+
+Utilities.clamp = (num, min, max) => Math.max(Math.min(num, max), min);
 
 Utilities.incrementTracker = tracker => tracker.slice(0, tracker.indexOf("-") + 1) + (Number(tracker.slice(tracker.indexOf("-") + 1)) + 1);
 

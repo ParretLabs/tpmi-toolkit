@@ -6,6 +6,6 @@ module.exports = {
 	MapUtilities: require('./modules/utils/MapUtilities'),
 	VectorUtilities: require('./modules/utils/VectorUtilities'),
 	VisualUtilities: require('./modules/utils/VisualUtilities'),
-	SETTINGS: require('./modules/SETTINGS'),
+	CONSTANTS: require('./modules/CONSTANTS'),
 	Flatten: require('@flatten-js/core')
 };

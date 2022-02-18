@@ -1,3 +1,5 @@
+const { Point } = require('@flatten-js/core');
+
 const TILE_IDS = {
 	FLOOR: 0,
 	WALL: 1,
@@ -57,11 +59,25 @@ const NEIGHBOR_VECTORS = [
 ];
 
 const SYMMETRY = {
+	ASYMMETRIC: "A",
 	ROTATIONAL: "R",
 	HORIZONTAL: "H",
 	VERTICAL: "V",
-	FOURWAY: "F"
+	FOURWAY: "F",
 };
+
+// Mirror Functions return an array of elements that mirror the input element
+const SYMMETRY_FUNCTIONS = {
+	"A": ({width, height}, p) => [new Point(Math.random() * width, Math.random() * height)],
+	"R": ({width, height}, p) => [new Point(width - p.x, height - p.y)],
+	"H": ({width, height}, p) => [new Point(width - p.x, p.y)],
+	"V": ({width, height}, p) => [new Point(p.x, height - p.y)],
+	"F": ({width, height}, p) => [
+		new Point(width - p.x, p.y),
+		new Point(p.x, height - p.y),
+		new Point(width - p.x, height - p.y)
+	]
+}
 
 const TEAMS = {
 	NONE: 0,
@@ -69,4 +85,6 @@ const TEAMS = {
 	BLUE: 2
 };
 
-module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS, SYMMETRY, TEAMS };
+const ELEMENT_TYPES = ["WALLS", "FLAGS", "SPIKES", "BOMBS"];
+
+module.exports = { TILE_IDS, TILE_COLORS, NEIGHBOR_VECTORS, SYMMETRY, ELEMENT_TYPES, SYMMETRY_FUNCTIONS, TEAMS };

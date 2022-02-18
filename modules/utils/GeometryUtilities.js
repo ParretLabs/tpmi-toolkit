@@ -136,6 +136,8 @@ GeometryUtilities.lerp = (start, end, t) => {
 	return start + t * (end-start);
 }
 
+GeometryUtilities.pointsEqualTo = (points, eqPoint, func="every") => points[func](p => eqPoint.equalTo(p));
+
 GeometryUtilities.maxVector = (...vectors) => vectorMinMax("max", vectors);
 GeometryUtilities.minVector = (...vectors) => vectorMinMax("min", vectors);
 

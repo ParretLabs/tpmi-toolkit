@@ -27,7 +27,7 @@ const promptSchema = {
 			message: 'Seed must be a number'
 		},
 		symmetry: {
-			description: 'Map Symmetry | (R)otational, (N)o symmetry',
+			description: 'Map Symmetry | (R)otational, (H)orizontal, (V)ertical, (N)o symmetry',
 			pattern: /^[RN]+$/,
 			message: 'Invalid Symmetry',
 			default: "R"

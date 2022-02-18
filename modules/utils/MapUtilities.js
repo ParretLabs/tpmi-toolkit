@@ -4,7 +4,7 @@
 const PNGImage = require('pngjs-image');
 const { Point } = require('@flatten-js/core');
 
-const { TILE_COLORS, TILE_IDS } = require('../SETTINGS');
+const { TILE_COLORS, TILE_IDS } = require('../CONSTANTS');
 const Utilities = require('./Utilities');
 
 let MapUtilities = {};

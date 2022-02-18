@@ -1,5 +1,5 @@
 const { Point, Segment, Vector, Box } = require('@flatten-js/core');
-const { TEAMS } = require('../SETTINGS');
+const { TEAMS } = require('../CONSTANTS');
 
 let Elements = {};
 
@@ -13,6 +13,10 @@ Elements.BaseElement = class BaseElement {
 
 	visualize() {
 		return this.point.svg();
+	}
+
+	update(settings) {
+		return Object.assign(this, settings);
 	}
 
 	clone() {

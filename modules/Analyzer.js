@@ -6,7 +6,7 @@ const Utilities = require('./utils/Utilities');
 const VectorUtilities = require('./utils/VectorUtilities');
 const GeometryUtilities = require('./utils/GeometryUtilities');
 
-const { } = require('./SETTINGS');
+const { SYMMETRY } = require('./CONSTANTS');
 
 let Analyzer = {};
 
@@ -86,6 +86,34 @@ Analyzer.laneFinder = (vectorMap, inputSettings={}) => {
 	return {
 		lanes: lasers
 	};
+};
+
+Analyzer.detectVectorMapSymmetry = {
+	closest: vectorMap => {
+		const symmetryIDs = Object.values(SYMMETRY);
+		let symmetryScore = symmetryIDs.reduce((acc, val) => ({
+			...acc,
+			[val]: 0
+		}), {});
+
+		const elementTypes = ["walls", "bombs", "spikes", "flags"];
+		for(let i = 0; i < elementTypes.length; i++) {
+			const elementType = elementTypes[i];
+
+			if(vectorMap[elementType].length >= 2) {
+				symmetry = VectorUtilities.getClosestSymmetricRelationshipBetweenElements(
+					vectorMap, vectorMap[elementType]
+				);
+				symmetryScore[symmetry]++;
+			}
+		}
+
+		console.log(symmetryScore);
+
+		return symmetryIDs.reduce(
+			(highestScore, sym) => symmetryScore[sym] > highestScore[0] ? [symmetryScore[sym], sym] : highestScore
+		, [0, "A"])[1];
+	}
 };
 
 module.exports = Analyzer;

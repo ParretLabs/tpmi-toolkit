@@ -4,7 +4,7 @@ const path = require('path');
 const PNGImage = require('pngjs-image');
 const cheerio = require('cheerio');
 
-const { TILE_COLORS, TILE_IDS } = require('../SETTINGS');
+const { TILE_COLORS, TILE_IDS, ELEMENT_TYPES } = require('../CONSTANTS');
 
 let VisualUtilities = {};
 
@@ -19,13 +19,13 @@ const IMAGES = [];
 VisualUtilities.visualizeVectorMap = vectorMap => {
 	const gridSVG = `<g>
 		<defs>
-			<pattern id="grid" width="1" height="1" patternUnits="userSpaceOnUse">
+			<pattern id="grid" x="0.5" y="0.5" width="1" height="1" patternUnits="userSpaceOnUse">
 				<rect width="1" height="1" fill="white"/>
 				<path d="M 1 0 L 0 0 0 1" fill="none" stroke="gray" stroke-width="0.1"/>
 			</pattern>
 		</defs>
 
-		<rect x="-0.5" y="-0.5" width="100%" height="100%" fill="url(#grid)" />
+		<rect x="0" y="0" width="100%" height="100%" fill="url(#grid)" />
 	</g>`;
 	const wallSVG = VisualUtilities.groupSVGElements(vectorMap.walls.map(w => {
 		let $line = cheerio.load(w.svg());
@@ -50,7 +50,8 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 	$svg(".wall").attr("stroke-linecap", "round");
 
 	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 2} ${vectorMap.height + 2}`);
-	$svg("svg").css("width", "50%");
+	$svg("svg").css("width", "48vw");
+	$svg("svg").css("border", "1px solid black");
 
 	return $svg.html();
 };
@@ -72,11 +73,11 @@ VisualUtilities.visualizeBoxMap = boxMap => {
 		svg += boxMap[i].svg();
 	}
 
-	let $svg = cheerio.load(`<body><svg viewBox="0 0 50 50" style="width: 50%">${svg}</svg></body>`);
+	let $svg = cheerio.load(`<svg viewBox="0 0 50 50" style="width: 48vw">${svg}</svg>`);
 
 	$svg("rect").attr("stroke-width", "0.1");
 
-	return $svg("body").html();
+	return $svg.html();
 };
 
 VisualUtilities.visualizeWallMap = wallMap => {
@@ -88,7 +89,12 @@ VisualUtilities.visualizeWallMap = wallMap => {
 		}
 	}
 
-	return `<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}" style="width: 50%">${svg}</svg>`;
+	let $svg = cheerio.load(`<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`);
+
+	$svg("svg").css("width", "48vw");
+	$svg("svg").css("border", "1px solid black");
+
+	return $svg.html();
 };
 
 VisualUtilities.groupSVGElements = svgs => `<g>${svgs.join("").replace(/[\n\r]/g, "")}</g>`;

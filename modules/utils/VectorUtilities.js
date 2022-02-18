@@ -1,9 +1,9 @@
 // Third-Level Utility (Can access Second-level utilities)
 // For working with VectorMaps
 
-const { Point, Segment, Vector, Box, PlanarSet } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box, Line } = require('@flatten-js/core');
 
-const { TILE_IDS, TEAMS } = require('../SETTINGS');
+const { TILE_IDS, TEAMS, SYMMETRY, SYMMETRY_FUNCTIONS } = require('../CONSTANTS');
 const Elements = require('../types/Elements');
 const Utilities = require('./Utilities');
 const GeometryUtilities = require('./GeometryUtilities');
@@ -76,6 +76,19 @@ VectorUtilities.translateWallsAtPoint = (wallSegments, oldPoint, newPoint) => {
 	return affectedWallSegments;
 };
 
+VectorUtilities.getFlagPair = flags => [
+	flags.find(a => a.team === TEAMS.RED) || null,
+	flags.find(a => a.team === TEAMS.BLUE) || null
+];
+
+VectorUtilities.elementsToPoints = elements => elements.reduce((acc, elem) => {
+	if(elem.point) acc.push(elem.point);
+	else if(elem.start && elem.end) return acc.concat([elem.start, elem.end]);
+	else if(elem.x && elem.y) acc.push(elem);
+
+	return acc;
+}, []);
+
 VectorUtilities.roundMapPositions = vectorMap => {
 	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
 		vectorMap.walls[i].start = GeometryUtilities.roundPoint(vectorMap.walls[i].start);
@@ -83,18 +96,6 @@ VectorUtilities.roundMapPositions = vectorMap => {
 	}
 
 	return vectorMap.walls;
-};
-
-VectorUtilities.calculateMapSize = vectorMap => {
-	let maxVector = new Vector(0, 0);
-
-	for (let i = vectorMap.walls.length - 1; i >= 0; i--) maxVector = GeometryUtilities.maxVector(
-		vectorMap.walls[i].start, 
-		vectorMap.walls[i].end,
-		maxVector
-	);
-
-	return GeometryUtilities.roundPoint(maxVector);
 };
 
 VectorUtilities.getVectorElementsFromTileMap = tileMap => {
@@ -117,10 +118,13 @@ VectorUtilities.getVectorElementsFromTileMap = tileMap => {
 };
 
 VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
+	// Safe zone tolerance ensures that elements directly within the middle of the map are safe.
+	const SAFE_ZONE_TOLERANCE = 0.0000001;
+
 	const newElements = [];
 
 	const [lA, lB, lC] = sliceLine.standard;
-	const isPointSafe = point => point.y < (lC - (lA * point.x)) / lB;
+	const isPointSafe = point => (point.y - SAFE_ZONE_TOLERANCE) >= (lC - (lA * (point.x - SAFE_ZONE_TOLERANCE))) / lB;
 
 	for (let i = elements.length - 1; i >= 0; i--) {
 		let intersection;
@@ -129,12 +133,14 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 		if(elements[i].constructor.name === "Segment") {
 			if(isPointSafe(elements[i].start) && isPointSafe(elements[i].end)) {
 				newElements.push(elements[i]);
-			} else if(intersection = elements[i].intersect(sliceLine)){
-				// If the segment intersects with the safe-zone border, slice it inhalf.
+			} else if(intersection = elements[i].intersect(sliceLine)){ // If the segment intersects with the safe-zone border, slice it inhalf.
 				if(intersection.length === 0) continue;
 
 				let slicedSegments = elements[i].split(intersection[0]);
-				let safeSlice = slicedSegments.find(s => s && (isPointSafe(s.start) || isPointSafe(s.end)));
+				// Finds the segment that is on the safe side
+				let safeSlice = slicedSegments.find(s => s && (
+					isPointSafe(s.start) && isPointSafe(s.end)
+				));
 
 				if(safeSlice) newElements.push(safeSlice);
 			}
@@ -149,46 +155,119 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 	return newElements;
 };
 
-VectorUtilities.findSmallestElementVector = (wallSegments) => {
-	let translationVector = new Vector(0, 0);
+VectorUtilities.getMinVectorFromElements = elements => {
+	let minVector = new Vector(Infinity, Infinity);
+	const points = VectorUtilities.elementsToPoints(elements);
 
-	for (let i = wallSegments.length - 1; i >= 0; i--) translationVector = GeometryUtilities.minVector(
-		wallSegments[i].start, 
-		wallSegments[i].end,
-		translationVector
+	for (let i = points.length - 1; i >= 0; i--) minVector = GeometryUtilities.minVector(
+		points[i],
+		minVector
 	);
 
-	return translationVector;
+	return GeometryUtilities.roundPoint(new Vector(minVector.x, minVector.y));
 };
 
-VectorUtilities.mirrorVectorElements = (elements, mirrorFunc) => {
+VectorUtilities.getMaxVectorFromElements = elements => {
+	let maxVector = new Vector(0, 0);
+
+	const points = VectorUtilities.elementsToPoints(elements);
+
+	for (let i = points.length - 1; i >= 0; i--) maxVector = GeometryUtilities.maxVector(
+		points[i],
+		maxVector
+	);
+
+	return GeometryUtilities.roundPoint(new Vector(maxVector.x, maxVector.y));
+};
+
+VectorUtilities.mirrorVectorElements = (elements, mirrorFunc, settings={}) => {
 	const newElements = [];
 
 	for (let i = elements.length - 1; i >= 0; i--) {
-		const element1 = elements[i].clone();
-		let element2 = elements[i].clone();
+		let element = elements[i];
 
-		if(elements[i].constructor.name === "Segment") {
-			element2 = new Segment(mirrorFunc(element2.start), mirrorFunc(element2.end));
+		if(settings.duplicate) newElements.push(element);
+		if(element.constructor.name === "Segment") {
+			const mirrorStart = mirrorFunc(element.start);
+			const mirrorEnd = mirrorFunc(element.end);
 
-			newElements.push(element1);
-			newElements.push(element2);
-		} else if(elements[i].point) {
-			element2.point = mirrorFunc(element2.point);
+			// Centered Element Check
+			if(
+				GeometryUtilities.pointsEqualTo(mirrorStart, element.start) &&
+				GeometryUtilities.pointsEqualTo(mirrorEnd, element.end)
+			) continue;
+			
+			for (let i = mirrorStart.length - 1; i >= 0; i--) newElements.push(
+				new Segment(mirrorStart[i], mirrorEnd[i])
+			);
+		} else if(element.point) {
+			const mirrorPoints = mirrorFunc(element.point);
+			// Centered Element Check
+			if(
+				GeometryUtilities.pointsEqualTo(mirrorPoints, element.point)
+			) continue;
 
-			if(element2.team) element2.team = element2.team === TEAMS.RED ? TEAMS.BLUE : TEAMS.RED;
+			let newTeam;
+			if(element.team) newTeam = element.team === TEAMS.RED ? TEAMS.BLUE : TEAMS.RED;
 
-			newElements.push(element1);
-			newElements.push(element2);
+			for (let i = mirrorPoints.length - 1; i >= 0; i--) {
+				const newElement = elements[i].clone();
+				newElement.point = mirrorPoints[i];
+				if(newTeam) newElement.team = newTeam;
+
+				newElements.push(newElement);
+			}
+		} else if(element.constructor.name === "Point") {
+			const mirrorPoints = mirrorFunc(element);
+			// Centered Element Check
+			if(
+				GeometryUtilities.pointsEqualTo(mirrorPoints, element)
+			) continue;
+
+			for (let i = mirrorPoints.length - 1; i >= 0; i--) newElements.push(mirrorPoints[i]);
 		}
 	}
 
 	return newElements;
 };
 
-VectorUtilities.getFlagPair = flags => [
-	flags.find(a => a.team === TEAMS.RED),
-	flags.find(a => a.team === TEAMS.BLUE)
-];
+VectorUtilities.getSliceLineFromSymmetry = ({width, height}, symmetry) => {
+	if(symmetry === SYMMETRY.ROTATIONAL) {
+		return new Line(new Point(0, height), new Point(width, 0));
+	} else if(symmetry === SYMMETRY.HORIZONTAL) {
+		return new Line(new Point(width / 2, 0), new Point(width / 2, height));
+	} else if(symmetry === SYMMETRY.VERTICAL) {
+		return new Line(new Point(0, height / 2), new Point(width, height / 2));
+	}
+
+	return new Line(new Point(0, 0), new Point(1, 0));
+};
+
+VectorUtilities.getClosestSymmetricRelationshipBetweenElements = ({width, height}, elements) => {
+	const symmetryNames = Object.keys(SYMMETRY);
+	let symmetryScore = symmetryNames.reduce((acc, val) => ({
+		...acc,
+		[val]: 0
+	}), {});
+
+	const points = VectorUtilities.elementsToPoints(elements);
+	const doesPointExist = p => points.some(p2 => p.equalTo(p2));
+
+	for (let i = points.length - 1; i >= 0; i--) {
+		const point = points[i];
+
+		symmetryNames.forEach(sym => {
+			if(
+				SYMMETRY_FUNCTIONS[SYMMETRY[sym]]({width, height}, point).every(doesPointExist)
+			) symmetryScore[sym]++;
+		});
+	}
+
+	return SYMMETRY[
+		symmetryNames.reduce(
+			(highestScore, sym) => symmetryScore[sym] > highestScore[0] ? [symmetryScore[sym], sym] : highestScore
+		, [0, "ASYMMETRIC"])[1]
+	];
+};
 
 module.exports = VectorUtilities;

@@ -6,9 +6,9 @@ const MapUtilities = require('./utils/MapUtilities');
 const GeometryUtilities = require('./utils/GeometryUtilities');
 const VisualUtilities = require('./utils/VisualUtilities');
 
-const { NEIGHBOR_VECTORS, SYMMETRY, TILE_IDS } = require('./SETTINGS');
+const { NEIGHBOR_VECTORS, SYMMETRY, SYMMETRY_FUNCTIONS, TILE_IDS, ELEMENT_TYPES } = require('./CONSTANTS');
 
-let Vectorizer = {};
+const Vectorizer = {};
 
 Vectorizer.VectorMap = class VectorMap {
 	constructor({
@@ -31,6 +31,7 @@ Vectorizer.VectorMap = class VectorMap {
 
 	get width() {return this.size.x;}
 	get height() {return this.size.y;}
+	get elements() {return [].concat(this.walls, this.flags, this.spikes, this.bombs)}
 
 	clone() {
 		return new Vectorizer.VectorMap({
@@ -50,9 +51,11 @@ Vectorizer.VectorMap = class VectorMap {
 	// Recalculates map properties
 	normalize() {
 		VectorUtilities.roundMapPositions(this);
-		Vectorizer.reframeMap(this);
+		ELEMENT_TYPES.map(e => e.toLowerCase()).forEach(elem => {
+			this[elem] = Vectorizer.reframeElements(this[elem]);
+		});
 
-		this.size = VectorUtilities.calculateMapSize(this);
+		this.size = VectorUtilities.getMaxVectorFromElements(this.elements);
 		this.planarSets = VectorUtilities.generatePlanarSetsFromVectorMap(this);
 		this.pathFindingMap = Vectorizer.generatePathFindingMap(this).tileMap;
 	}
@@ -61,7 +64,7 @@ Vectorizer.VectorMap = class VectorMap {
 		// Normalization is disabled so the dimensions stay the same.
 		// This is required so that the mirroring is accurate.
 		Vectorizer.sliceMap(this, symmetry, true);
-		Vectorizer.mirrorMap(this, symmetry);
+		Vectorizer.symmetrizeMap(this, symmetry);
 
 		this.set({
 			walls: Vectorizer.fillWallHoles(this.walls)
@@ -78,6 +81,9 @@ Vectorizer.VectorMap = class VectorMap {
 		return VisualUtilities.visualizeVectorMap(this);
 	}
 };
+
+require('./vectorizer_funcs/fillWallHoles')(Vectorizer);
+require('./vectorizer_funcs/Tracers')(Vectorizer);
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
@@ -158,11 +164,7 @@ VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
 
 // Slices a vector map in half
 Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
-	let sliceLine = new Line(new Point(0, 0), new Point(1, 0));
-
-	if(symmetry === SYMMETRY.ROTATIONAL) {
-		sliceLine = new Line(new Point(0, vectorMap.height), new Point(vectorMap.width, 0));
-	}
+	let sliceLine = VectorUtilities.getSliceLineFromSymmetry(vectorMap, symmetry);
 
 	// Slice all the different types of elements.
 	let sliceableElements = ["walls", "flags", "bombs", "spikes"];
@@ -177,15 +179,13 @@ Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
 	return vectorMap;
 };
 
-// Mirrors a map
-Vectorizer.mirrorMap = (vectorMap, symmetry) => {
+// Makes a map symmetrical
+Vectorizer.symmetrizeMap = (vectorMap, symmetry) => {
 	let mirrorFunc = p => p;
 
-	if(symmetry === SYMMETRY.ROTATIONAL) {
-		mirrorFunc = p => new Point(vectorMap.width - p.x, vectorMap.height - p.y);
-	}
+	if(SYMMETRY_FUNCTIONS[symmetry]) mirrorFunc = p => SYMMETRY_FUNCTIONS[symmetry](vectorMap, p);
 
-	let newMapWalls = VectorUtilities.mirrorVectorElements(vectorMap.walls, mirrorFunc);
+	let newMapWalls = VectorUtilities.mirrorVectorElements(vectorMap.walls, mirrorFunc, { duplicate: true });
 	// Set the walls and recalculate the map size so that the remaining elements are correctly mirrored.
 	vectorMap.set({ walls: newMapWalls });
 
@@ -194,7 +194,9 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 	let newElements = {};
 
 	for (let i = mirrorableElements.length - 1; i >= 0; i--) {
-		newElements[mirrorableElements[i]] = VectorUtilities.mirrorVectorElements(vectorMap[mirrorableElements[i]], mirrorFunc);
+		newElements[mirrorableElements[i]] = VectorUtilities.mirrorVectorElements(
+			vectorMap[mirrorableElements[i]], mirrorFunc, { duplicate: true }
+		);
 	}
 
 	vectorMap.set(newElements);
@@ -202,225 +204,24 @@ Vectorizer.mirrorMap = (vectorMap, symmetry) => {
 	return newMapWalls;
 };
 
-// Pushes elements with negative positions back into the positive positions.
-Vectorizer.reframeMap = vectorMap => {
-	let translationVector = VectorUtilities.findSmallestElementVector(vectorMap.walls);
-	translationVector = new Vector(Math.abs(translationVector.x), Math.abs(translationVector.y));
+// Pushes elements with negative positions into positive positions.
+Vectorizer.reframeElements = elements => {
+	let translationVector = VectorUtilities.getMinVectorFromElements(elements);
+	translationVector = translationVector.multiply(-1);
 
-	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
-		vectorMap.walls[i] = vectorMap.walls[i].translate(translationVector);
-	}
+	console.log(translationVector);
 
-	return vectorMap.walls;
-};
+	for (let i = elements.length - 1; i >= 0; i--) {
+		const element = elements[i];
 
-Vectorizer.fillWallHoles = (walls) => {
-	let newMapWalls = [];
-	const looseEnds = [];
-
-	let maxVector = new Vector(0, 0);
-
-	// Find the loose ends
-	// Loose ends are found by looking for segments that don't have 2 segments on either side of itself.
-	for (let i = walls.length - 1; i >= 0; i--) {
-		let startSegmentClosed = false;
-		let endSegmentClosed = false;
-
-		if(walls[i].length === 0) continue; // skip 0-length walls
-
-		for (let j = walls.length - 1; j >= 0; j--) {
-			// Don't match segment against itself
-			if(i === j) continue;
-			if(walls[j].length === 0) continue; // skip 0-length walls
-
-			if(walls[i].start.equalTo(walls[j].end)) startSegmentClosed = true;
-			if(walls[i].start.equalTo(walls[j].start)) startSegmentClosed = true;
-
-			if(walls[i].end.equalTo(walls[j].start)) endSegmentClosed = true;
-			if(walls[i].end.equalTo(walls[j].end)) endSegmentClosed = true;
-
-			if(startSegmentClosed && endSegmentClosed) break;
-		}
-
-		if(!startSegmentClosed || !endSegmentClosed) {
-			// Skip floating segments
-			// This function only tracks loose ends, not islands.
-			if(!startSegmentClosed && !endSegmentClosed) continue;
-
-			looseEnds.push({
-				segment: walls[i],
-				startIsLoose: !startSegmentClosed
-			});
-		}
-
-		// Get size
-		maxVector = GeometryUtilities.maxVector(walls[i].start, walls[i].end, maxVector);
-	}
-
-	// Iterate through the loose ends
-	// Match each one against each other to find the closest ones.
-	// Find the best possible pair, draw a segment to fill the hole,
-	// then mark it as used.
-	for (let i = looseEnds.length - 1; i >= 0; i--) {
-		if(!looseEnds[i]) continue;
-
-		const loosePoint = looseEnds[i].startIsLoose ? looseEnds[i].segment.start : looseEnds[i].segment.end;
-
-		let closestLoose = {
-			point: null,
-			distance: Math.max(maxVector.x, maxVector.y) / 8,
-			index: -1
-		};
-
-		for (let j = looseEnds.length - 1; j >= 0; j--) {
-			// Don't match loose end against itself
-			if(i === j) continue;
-			if(!looseEnds[j]) continue;
-			
-			const loosePoint2 = looseEnds[j].startIsLoose ? looseEnds[j].segment.start : looseEnds[j].segment.end;
-
-			const [dist, shortest_segment] = loosePoint.distanceTo(loosePoint2);
-			if(dist < closestLoose.distance) closestLoose = {
-				point: loosePoint2,
-				distance: dist,
-				index: j
-			};
-		}
-
-		if(closestLoose.point) {
-			newMapWalls.push(new Segment(
-				loosePoint,
-				closestLoose.point
-			));
-
-			looseEnds.splice(i, 1);
-			looseEnds.splice(closestLoose.index, 1);
+		if(element.constructor.name === "Segment" || element.constructor.name === "Point") {
+			elements[i] = element.translate(translationVector);
+		} else if(element.point) {
+			elements[i].point = element.point.translate(translationVector)
 		}
 	}
 
-	newMapWalls = newMapWalls.concat(walls);
-
-	return newMapWalls;
-};
-
-/**
- * Traces a WallMap using lines.
- * @param  {Array[Array]} wallMap
- * @return {Array[Segment]}
- */
-Vectorizer.getLinesFromWallMap = wallMap => {
-	let lines = [];
-
-	for (let y = wallMap.length - 1; y >= 0; y--) {
-		for (let x = wallMap[0].length - 1; x >= 0; x--) {
-			if(MapUtilities.getTile(wallMap, x, y) === 1) {
-				let startLines = Vectorizer.traceLinesFromPoint(wallMap, new Point(x, y));
-				lines = lines.concat(startLines);
-
-				traceMapFromLines(startLines, String(Utilities.hashNumberArray([x, y])) + "-0");
-			}
-		}
-	}
-
-	// Recursive Tracing Function
-	// It is first called using an array of starting segments traced from the starting wall point.
-	// All the endpoints of the segments in the array are used as starting points to trace new lines.
-	// Those new lines are then fed into the function again to repeat the process.
-	// This results in a sort of branching pattern where the end of the last segments are used for the beginning of more.
-	function traceMapFromLines(currentLines, branchTracker, settings) {
-		let newLines = [];
-
-		for (let i = currentLines.length - 1; i >= 0; i--) {
-			let traceResults = Vectorizer.traceLinesFromPoint(wallMap, currentLines[i].segment.end, settings);
-
-			newLines = newLines.concat(traceResults);
-		}
-
-		newLines.forEach(l => {
-			l.segment.branch = branchTracker;
-		});
-
-		lines = lines.concat(newLines);
-
-		if(newLines.length > 0) traceMapFromLines(newLines, Utilities.incrementTracker(branchTracker), settings);
-	}
-
-	let walls = lines.map(l => l.segment);
-
-	// Fill in any loose ends.
-	let mapWalls = Vectorizer.fillWallHoles(walls);
-
-	return mapWalls;
-};
-
-/**
- * Finds the neighbors of a point, then traces a line in that neighbors direction.
- * @param  {Array[Array]}   wallMap - The map to traverse
- * @param  {Point}          point - The point to start tracing at
- * @return {Array[Segment]} An array of segments
- */
-Vectorizer.traceLinesFromPoint = (wallMap, point, settings={}) => {
-	if(MapUtilities.getTile(wallMap, point.x, point.y) === 0) return [];
-
-	const pointNeighbors = MapUtilities.getNeighbors(wallMap, point);
-	const lines = [];
-
-	const traceLine = (x, y) => Vectorizer.traceSingleLineFromPoint(wallMap, point, new Point(x, y));
-
-	for (let i = pointNeighbors.length - 1; i >= 0; i--) {
-		if(settings.skipDiagonal && [1, 3, 5, 7].includes(i)) continue;
-
-		if(pointNeighbors[i] === 1) lines.push(traceLine(NEIGHBOR_VECTORS[i].x, NEIGHBOR_VECTORS[i].y));
-	}
-
-	let filteredLines = lines.filter(a => a !== null);
-
-	// If there are no neighbors around this tile and this tile is a wall, then return a 0 length segment.
-	// Exists so that "pizza blocks" still get registered.
-	if(
-		filteredLines.length === 0 &&
-		pointNeighbors.every(n => n === 0 || n === 2) &&
-		MapUtilities.getTile(wallMap, point.x, point.y) === 1
-	) {
-		// Mark point as seen
-		MapUtilities.setTile(wallMap, point.x, point.y, 2);
-
-		return [{segment: new Segment(point, point)}];
-	} else return filteredLines;
-};
-
-/**
- * Traces a line from a point into a direction until an empty tile is found. WallMaps are mutated by this function.
- * @param  {Array[Array]} wallMap - The map to traverse
- * @param  {Point} startPoint - The point to start tracing at
- * @param  {Vector} direction - A vector that indicates the direction of the line
- * @return {Segment}
- */
-Vectorizer.traceSingleLineFromPoint = (wallMap, startPoint, direction) => {
-	let endPoint = startPoint.clone();
-
-	while(true) {
-		// console.log(endPoint, direction, MapUtilities.getTile(wallMap, endPoint.x, endPoint.y));
-		
-		// Mark point as seen
-		MapUtilities.setTile(wallMap, endPoint.x, endPoint.y, 2);
-
-		// Move to the next point
-		endPoint.x += direction.x;
-		endPoint.y += direction.y;
-
-		if(
-			!MapUtilities.getTile(wallMap, endPoint.x, endPoint.y) ||
-			MapUtilities.getTile(wallMap, endPoint.x, endPoint.y) === 2
-		) break;
-	}
-
-	endPoint.x -= direction.x;
-	endPoint.y -= direction.y;
-
-	let segment = new Segment(startPoint, endPoint);
-
-	return {segment};
+	return elements;
 };
 
 module.exports = Vectorizer;
