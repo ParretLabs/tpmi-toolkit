@@ -50,6 +50,8 @@ Utilities.hashNumberArray = (numbers, maxBytes=8) => {
 	return parseInt(numbers.reduce((acc, val) => acc + val.toString(2).padStart(maxBytes, "0"), ""), 2);
 }
 
+Utilities.angleBetween = ([x1, y1], [x2, y2]) => Math.atan2(y2 - y1, x2 - x1);
+
 Utilities.tileToHex = (tile)  => {
 	return Utilities.rgbToHex(TILE_COLORS[tile].r, TILE_COLORS[tile].b, TILE_COLORS[tile].g);
 }

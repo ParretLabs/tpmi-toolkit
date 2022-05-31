@@ -11,13 +11,15 @@ const GeometryUtilities = require('./GeometryUtilities');
 let VectorUtilities = {};
 
 // Flexible custom tilemap generator. 
-VectorUtilities.tileMapGenerator = (inputSettings={}) => {
+VectorUtilities.tileMapGenerator = (_settings={}) => {
 	const settings = {
 		detectorSize: 1,
 		mapWidth: 1,
 		mapHeight: 1,
-		callback: () => {},
-		...inputSettings
+		detectorFilter: (point) => {},
+		detectorMap: (point) => {},
+		callback: (tileMap, point, detector) => {},
+		..._settings
 	};
 
 	if(
@@ -30,13 +32,23 @@ VectorUtilities.tileMapGenerator = (inputSettings={}) => {
 
 	for (let y = 0; y < settings.mapHeight; y++) {
 		for (let x = 0; x < settings.mapWidth; x++) {
-			const tileBoxDetector = GeometryUtilities.createDetector(new Point(x, y), {
+			const centerPoint = new Point(x, y);
+			if(!settings.detectorFilter(centerPoint)) continue;
+
+			const tileBoxDetector = settings.detectorMap(centerPoint) ?? GeometryUtilities.createDetector(centerPoint, {
 				size: settings.detectorSize
 			});
+			tileBoxDetector.centerPoint = centerPoint;
 
 			detectors.push(tileBoxDetector);
+		}
+	}
 
-			settings.callback(tileMap, new Point(x, y), tileBoxDetector);
+	for (let i = 0; i < detectors.length; i++) {
+		const value = settings.callback(tileMap, detectors[i].centerPoint, detectors[i], detectors);
+
+		if(typeof value !== "undefined") {
+			tileMap[detectors[i].centerPoint.y][detectors[i].centerPoint.x] = value;
 		}
 	}
 

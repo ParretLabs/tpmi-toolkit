@@ -6,7 +6,6 @@
   "directories": {
     "example": "examples"
   },
-  "devDependencies": {},
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -15,6 +14,8 @@
   "dependencies": {
     "@flatten-js/core": "^1.2.22",
     "cheerio": "^1.0.0-rc.6",
+    "concaveman": "^1.2.1",
+    "jest": "^28.1.0",
     "pngjs-image": "^0.11.7",
     "prompt": "^1.1.0"
   }

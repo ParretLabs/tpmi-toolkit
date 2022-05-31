@@ -1,7 +1,7 @@
 // Second-level Utility (Can only require first-level utilities)
 // For utilities that interact with Flatten.js and other geometry related functions.
 
-const { Point, Segment, Vector, PlanarSet, Box } = require('@flatten-js/core');
+const { Point, Segment, Vector, PlanarSet, Box, Ray } = require('@flatten-js/core');
 const Utilities = require('./Utilities');
 
 let GeometryUtilities = {};
@@ -137,6 +137,10 @@ GeometryUtilities.lerp = (start, end, t) => {
 }
 
 GeometryUtilities.pointsEqualTo = (points, eqPoint, func="every") => points[func](p => eqPoint.equalTo(p));
+GeometryUtilities.getClosestPoint = (points, anchor) => points.reduce((acc, p) => {
+	const dist = p.distanceTo(anchor);
+	return acc[1] > dist ? [p, dist] : acc;
+}, [points[0] || null, points[0].distanceTo(anchor)])[0];
 
 GeometryUtilities.maxVector = (...vectors) => vectorMinMax("max", vectors);
 GeometryUtilities.minVector = (...vectors) => vectorMinMax("min", vectors);

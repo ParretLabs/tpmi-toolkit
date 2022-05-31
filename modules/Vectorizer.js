@@ -112,10 +112,11 @@ require('./vectorizer_funcs/Tracers')(Vectorizer);
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
 	const { flags, bombs, spikes } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
+	const { walls, islands } = Vectorizer.getWallsFromWallMap(wallMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
 		elements: {
-			walls: Vectorizer.getLinesFromWallMap(wallMap),
+			walls: Vectorizer.getWallsFromWallMap(wallMap),
 			flags, bombs, spikes
 		}
 	});
@@ -152,9 +153,9 @@ Vectorizer.generatePathFindingMap = vectorMap => {
 		mapHeight: vectorMap.height,
 		callback: (tileMap, point, detector) => {
 			if(vectorMap.planarSets.immpassible.search(detector)) {
-				tileMap[point.y][point.x] = 1;
+				return 1;
 			} else if(vectorMap.planarSets.semipassible.search(detector)) {
-				tileMap[point.y][point.x] = 2;
+				return 2;
 			}
 		}
 	});

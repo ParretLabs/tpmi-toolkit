@@ -58,6 +58,16 @@ Elements.Wall = class Wall extends Elements.BaseElement {
 	}
 }
 
+Elements.Island = class Island {
+	constructor(points){
+		this.points = points;
+	}
+
+	clone() {
+		return new Elements[this.constructor.name](this.points);
+	}
+}
+
 Elements.Flag = class Flag extends Elements.BaseElement {
 	constructor({x, y}, team){
 		super({x, y});

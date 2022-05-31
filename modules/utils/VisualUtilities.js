@@ -8,6 +8,8 @@ const { TILE_COLORS, TILE_IDS, ELEMENT_TYPES } = require('../CONSTANTS');
 
 let VisualUtilities = {};
 
+const COLORS = ['#eee', '#111', 'red', 'blue', 'green', 'yellow', 'purple', 'orange'];
+
 const IMAGES = [];
 
 // Object.keys(TILE_IDS).forEach(key => {
@@ -85,8 +87,35 @@ VisualUtilities.visualizeWallMap = wallMap => {
 
 	for (let y = 0; y < wallMap.length; y++) {
 		for (let x = 0; x < wallMap[0].length; x++) {
-			if(wallMap[y][x] === 1) svg += `<rect x="${x}" y="${y}" width="1" height="1" />`;
+			svg += `<rect x="${x}" y="${y}" width="1" height="1" style="fill:${COLORS[wallMap[y][x]]};" />`;
 		}
+	}
+
+	let $svg = cheerio.load(`<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`);
+
+	$svg("svg").css("width", "48vw");
+	$svg("svg").css("border", "1px solid black");
+
+	return $svg.html();
+};
+
+VisualUtilities.visualizeOptimizedWallMap = optimizedWallMap => {
+	let svg = "";
+
+	let { optimizedWallMap: wallMap, outerWallPoints, islands } = optimizedWallMap;
+
+	for (let y = 0; y < wallMap.length; y++) {
+		for (let x = 0; x < wallMap[0].length; x++) {
+			svg += `<rect x="${x}" y="${y}" width="1" height="1" style="fill:${COLORS[wallMap[y][x]]};" />`;
+		}
+	}
+
+	for (let i = 0; i < outerWallPoints.length; i++) {
+		svg += `<circle cx="${outerWallPoints[i].x + 0.5}" cy="${outerWallPoints[i].y + 0.5}" r="0.25" style="fill:aqua;" fill-opacity="0.4" />`;
+	}
+
+	for (let i = 0; i < islands.length; i++) {
+		svg += `<polygon points="${islands[i].map(p => `${p.x + 0.5},${p.y + 0.5}`).join(" ")}" style="fill:gray;" fill-opacity="0.7" />`;
 	}
 
 	let $svg = cheerio.load(`<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`);
