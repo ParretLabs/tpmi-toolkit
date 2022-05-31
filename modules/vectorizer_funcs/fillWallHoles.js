@@ -1,6 +1,7 @@
 const { Point, Segment, Vector } = require('@flatten-js/core');
 
 const GeometryUtilities = require('../utils/GeometryUtilities');
+const { Wall } = require('../types/Elements');
 
 module.exports = Vectorizer => {
 	Vectorizer.fillWallHoles = (walls) => {
@@ -15,18 +16,18 @@ module.exports = Vectorizer => {
 			let startSegmentClosed = false;
 			let endSegmentClosed = false;
 
-			if(walls[i].length === 0) continue; // skip 0-length walls
+			if(walls[i].shape.length === 0) continue; // skip 0-length walls
 
 			for (let j = walls.length - 1; j >= 0; j--) {
 				// Don't match segment against itself
 				if(i === j) continue;
-				if(walls[j].length === 0) continue; // skip 0-length walls
+				if(walls[j].shape.length === 0) continue; // skip 0-length walls
 
-				if(walls[i].start.equalTo(walls[j].end)) startSegmentClosed = true;
-				if(walls[i].start.equalTo(walls[j].start)) startSegmentClosed = true;
+				if(walls[i].shape.start.equalTo(walls[j].shape.end)) startSegmentClosed = true;
+				if(walls[i].shape.start.equalTo(walls[j].shape.start)) startSegmentClosed = true;
 
-				if(walls[i].end.equalTo(walls[j].start)) endSegmentClosed = true;
-				if(walls[i].end.equalTo(walls[j].end)) endSegmentClosed = true;
+				if(walls[i].shape.end.equalTo(walls[j].shape.start)) endSegmentClosed = true;
+				if(walls[i].shape.end.equalTo(walls[j].shape.end)) endSegmentClosed = true;
 
 				if(startSegmentClosed && endSegmentClosed) break;
 			}
@@ -37,13 +38,13 @@ module.exports = Vectorizer => {
 				if(!startSegmentClosed && !endSegmentClosed) continue;
 
 				looseEnds.push({
-					segment: walls[i],
+					segment: walls[i].shape,
 					startIsLoose: !startSegmentClosed
 				});
 			}
 
 			// Get size
-			maxVector = GeometryUtilities.maxVector(walls[i].start, walls[i].end, maxVector);
+			maxVector = GeometryUtilities.maxVector(walls[i].shape.start, walls[i].shape.end, maxVector);
 		}
 
 		// Iterate through the loose ends
@@ -77,10 +78,10 @@ module.exports = Vectorizer => {
 			}
 
 			if(closestLoose.point) {
-				newMapWalls.push(new Segment(
-					loosePoint,
-					closestLoose.point
-				));
+				newMapWalls.push(new Wall({
+					ps: loosePoint,
+					pe: closestLoose.point
+				}));
 
 				looseEnds.splice(i, 1);
 				looseEnds.splice(closestLoose.index, 1);

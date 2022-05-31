@@ -36,6 +36,12 @@ Utilities.getSeededRandomInt = (randomFunc, min, max) => {
 	return Math.floor(randomFunc() * (max - min)) + min; // The maximum is exclusive and the minimum is inclusive
 }
 
+Utilities.isSafeArrayLength = num => (
+	typeof num === "number" &&
+	Number.isSafeInteger(num) &&
+	num > 0
+);
+
 Utilities.clamp = (num, min, max) => Math.max(Math.min(num, max), min);
 
 Utilities.incrementTracker = tracker => tracker.slice(0, tracker.indexOf("-") + 1) + (Number(tracker.slice(tracker.indexOf("-") + 1)) + 1);

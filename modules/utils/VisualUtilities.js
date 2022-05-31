@@ -27,8 +27,8 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 
 		<rect x="0" y="0" width="100%" height="100%" fill="url(#grid)" />
 	</g>`;
-	const wallSVG = VisualUtilities.groupSVGElements(vectorMap.walls.map(w => {
-		let $line = cheerio.load(w.svg());
+	const wallSVG = VisualUtilities.groupSVGElements(vectorMap.elements.walls.map(w => {
+		let $line = cheerio.load(w.visualize());
 
 		$line("line").attr("data-branch", w.branch);
 		$line("line").attr("class", "wall");
@@ -36,7 +36,7 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 		return $line("line").parent().html();
 	}));
 	let elementsSVG = ["flags", "bombs", "spikes"].reduce((acc, val) => {
-		return acc + VisualUtilities.groupSVGElements(vectorMap[val].map(e => e.visualize()));
+		return acc + VisualUtilities.groupSVGElements(vectorMap.elements[val].map(e => e.visualize()));
 	}, "");
 
 	let $svg = cheerio.load(VisualUtilities.appendToSVGDoc(
@@ -49,7 +49,7 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 	$svg(".wall").attr("stroke-width", "0.25");
 	$svg(".wall").attr("stroke-linecap", "round");
 
-	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 2} ${vectorMap.height + 2}`);
+	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 1} ${vectorMap.height + 1}`);
 	$svg("svg").css("width", "48vw");
 	$svg("svg").css("border", "1px solid black");
 

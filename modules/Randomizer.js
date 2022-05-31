@@ -11,31 +11,31 @@ class Randomizer {
 		this.randomInt = (min, max) => Utilities.getSeededRandomInt(this.random, min, max);
 	}
 
-	randomizeWalls(inputWallSegments, randomFunc) {
+	randomizeWalls(inputWallElements, randomFunc) {
 		// Clone the wall segments
-		let wallSegments = inputWallSegments.map(s => s.clone());
+		let wallElements = inputWallElements.map(s => s.clone());
 		// Track the segments that have been moved
-		let affectedWallSegments = {};
+		let affectedWallElements = {};
 
-		for (let i = wallSegments.length - 1; i >= 0; i--) {
-			const segmentHash = GeometryUtilities.hashSegment(wallSegments[i]);
+		for (let i = wallElements.length - 1; i >= 0; i--) {
+			const elementHash = GeometryUtilities.hashSegment(wallElements[i].shape);
 
-			// console.log("segment", segmentHash);
+			// console.log("segment", elementHash);
 
-			if(affectedWallSegments[segmentHash]) continue;
+			if(affectedWallElements[elementHash]) continue;
 
-			const oldPoint = wallSegments[i].end;
+			const oldPoint = wallElements[i].shape.end;
 			const newPoint = randomFunc(oldPoint);
 
-			let newAffectedWallSegments = VectorUtilities.translateWallsAtPoint(wallSegments, oldPoint, newPoint);
-			affectedWallSegments = {...affectedWallSegments, ...newAffectedWallSegments};
+			let newAffectedWallSegments = VectorUtilities.translateWallsAtPoint(wallElements, oldPoint, newPoint);
+			affectedWallElements = {...affectedWallElements, ...newAffectedWallSegments};
 		}
 
-		return wallSegments;
+		return wallElements;
 	}
 
-	additiveRandomizeWalls(wallSegments, minVector, maxVector) {
-		return this.randomizeWalls(wallSegments, p => this.additiveRandomizePoint(p, minVector, maxVector));
+	additiveRandomizeWalls(wallElements, minVector, maxVector) {
+		return this.randomizeWalls(wallElements, p => this.additiveRandomizePoint(p, minVector, maxVector));
 	}
 
 	additiveRandomizeSegment(segment, minVector, maxVector) {

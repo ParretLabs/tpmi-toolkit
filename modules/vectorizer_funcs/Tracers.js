@@ -6,23 +6,39 @@ const MapUtilities = require('../utils/MapUtilities');
 
 const { NEIGHBOR_VECTORS, SYMMETRY, SYMMETRY_FUNCTIONS } = require('../CONSTANTS');
 
+const { Wall } = require('../types/Elements');
+
 module.exports = Vectorizer => {
 	/**
 	 * Traces a WallMap using lines.
 	 * @param  {Array[Array]} wallMap
-	 * @return {Array[Segment]}
+	 * @return {Array[Wall]}
 	 */
 	Vectorizer.getLinesFromWallMap = wallMap => {
 		let lines = [];
 
-		for (let y = wallMap.length - 1; y >= 0; y--) {
-			for (let x = wallMap[0].length - 1; x >= 0; x--) {
-				if(MapUtilities.getTile(wallMap, x, y) === 1) {
-					let startLines = Vectorizer.traceLinesFromPoint(wallMap, new Point(x, y));
-					lines = lines.concat(startLines);
+		// for (let y = wallMap.length - 1; y >= 0; y--) {
+		// 	for (let x = wallMap[0].length - 1; x >= 0; x--) {
+		// 		if(MapUtilities.getTile(wallMap, x, y) === 1) {
+		// 			let startLines = Vectorizer.traceWallsFromPoint(wallMap, new Point(x, y));
+		// 			lines = lines.concat(startLines);
 
-					traceMapFromLines(startLines, String(Utilities.hashNumberArray([x, y])) + "-0");
-				}
+		// 			traceMapFromLines(startLines, String(Utilities.hashNumberArray([x, y])) + "-0");
+		// 		}
+		// 	}
+		// }
+
+		// Search diagonally for a wall, then keep searching diagonally until an empty tile is found.
+		for(let distance = 0; distance < wallMap.length * wallMap[0].length; distance++) {
+			const [x, y] = [distance % wallMap[0].length, Math.floor(distance / wallMap[0].length)];
+
+			if(MapUtilities.getTile(wallMap, x, y) === 1) {
+				let startLines = Vectorizer.traceWallsFromPoint(wallMap, new Point(x, y));
+				lines = lines.concat(startLines);
+
+				traceMapFromLines(startLines, String(Utilities.hashNumberArray([x, y])) + "-0");
+
+				// break;
 			}
 		}
 
@@ -31,28 +47,26 @@ module.exports = Vectorizer => {
 		// All the endpoints of the segments in the array are used as starting points to trace new lines.
 		// Those new lines are then fed into the function again to repeat the process.
 		// This results in a sort of branching pattern where the end of the last segments are used for the beginning of more.
-		function traceMapFromLines(currentLines, branchTracker, settings) {
-			let newLines = [];
+		function traceMapFromLines(currentWalls, branchTracker, settings) {
+			let newWalls = [];
 
-			for (let i = currentLines.length - 1; i >= 0; i--) {
-				let traceResults = Vectorizer.traceLinesFromPoint(wallMap, currentLines[i].segment.end, settings);
+			for (let i = currentWalls.length - 1; i >= 0; i--) {
+				let traceResults = Vectorizer.traceWallsFromPoint(wallMap, currentWalls[i].shape.end, settings);
 
-				newLines = newLines.concat(traceResults);
+				newWalls = newWalls.concat(traceResults);
 			}
 
-			newLines.forEach(l => {
-				l.segment.branch = branchTracker;
+			newWalls.forEach(l => {
+				l.shape.branch = branchTracker;
 			});
 
-			lines = lines.concat(newLines);
+			lines = lines.concat(newWalls);
 
-			if(newLines.length > 0) traceMapFromLines(newLines, Utilities.incrementTracker(branchTracker), settings);
+			if(newWalls.length > 0) traceMapFromLines(newWalls, Utilities.incrementTracker(branchTracker), settings);
 		}
 
-		let mapWalls = lines.map(l => l.segment);
-
-		// Fill in any loose ends.
-		mapWalls = Vectorizer.fillWallHoles(mapWalls);
+		let mapWalls = lines;
+		
 
 		// Symmetrize map walls
 		const dimensions = {width: wallMap[0].length - 1, height: wallMap.length - 1};
@@ -67,18 +81,17 @@ module.exports = Vectorizer => {
 		);
 
 		const filledWalls = Vectorizer.fillWallHoles(mirroredWalls);
-		// const reframedWalls = Vectorizer.reframeWalls(filledWalls);
 
 		return filledWalls;
 	};
 
 	/**
-	 * Finds the neighbors of a point, then traces a line in that neighbors direction.
+	 * Finds the neighbors of a point, then traces a wall in that neighbors direction.
 	 * @param  {Array[Array]}   wallMap - The map to traverse
 	 * @param  {Point}          point - The point to start tracing at
-	 * @return {Array[Segment]} An array of segments
+	 * @return {Array[Wall]}    An array of Wall elements
 	 */
-	Vectorizer.traceLinesFromPoint = (wallMap, point, settings={}) => {
+	Vectorizer.traceWallsFromPoint = (wallMap, point, settings={}) => {
 		if(MapUtilities.getTile(wallMap, point.x, point.y) === 0) return [];
 
 		const NEIGHBOR_DETECTION_ORDER = [0, 2, 4, 6, 1, 3, 5, 7];
@@ -110,7 +123,10 @@ module.exports = Vectorizer => {
 			// Mark point as seen
 			MapUtilities.setTile(wallMap, point.x, point.y, 2);
 
-			return [{segment: new Segment(point, point)}];
+			return [new Wall({
+				ps: point,
+				pe: point
+			})];
 		} else return filteredLines;
 	};
 
@@ -119,7 +135,7 @@ module.exports = Vectorizer => {
 	 * @param  {Array[Array]} wallMap - The map to traverse
 	 * @param  {Point} startPoint - The point to start tracing at
 	 * @param  {Vector} direction - A vector that indicates the direction of the line
-	 * @return {Segment}
+	 * @return {Wall}
 	 */
 	Vectorizer.traceSingleLineFromPoint = (wallMap, startPoint, direction) => {
 		let endPoint = startPoint.clone();
@@ -143,8 +159,11 @@ module.exports = Vectorizer => {
 		endPoint.x -= direction.x;
 		endPoint.y -= direction.y;
 
-		let segment = new Segment(startPoint, endPoint);
+		let wall = new Wall({
+			ps: startPoint,
+			pe: endPoint
+		});
 
-		return {segment};
+		return wall;
 	};
 };

@@ -68,7 +68,7 @@ const SYMMETRY = {
 
 // Mirror Functions return an array of elements that mirror the input element
 const SYMMETRY_FUNCTIONS = {
-	"A": ({width, height}, p) => [new Point(Math.random() * width, Math.random() * height)],
+	"A": ({width, height}, p) => [new Point(NaN, NaN)],
 	"R": ({width, height}, p) => [new Point(width - p.x, height - p.y)],
 	"H": ({width, height}, p) => [new Point(width - p.x, p.y)],
 	"V": ({width, height}, p) => [new Point(p.x, height - p.y)],

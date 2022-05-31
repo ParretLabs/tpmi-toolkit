@@ -12,33 +12,36 @@ const Vectorizer = {};
 
 Vectorizer.VectorMap = class VectorMap {
 	constructor({
-		walls,
-		flags,
-		spikes,
-		bombs
+		elements={}
 	}) {
-		this.size = null;
-		this.walls = walls || [];
-		this.flags = flags || [];
-		this.spikes = spikes || [];
-		this.bombs = bombs || [];
+		this.size = new Vector(0, 0);
+
+		this.elements = {
+			walls: elements.walls || [],
+			flags: elements.flags || [],
+			spikes: elements.spikes || [],
+			bombs: elements.bombs || [],
+		};
 
 		this.planarSets = null;
 		this.pathFindingMap = null;
 
 		this.normalize();
+
+		if(this.size.length === 0) throw new Error("Empty maps are not supported. Vector maps must contain elements to be initialized.");
 	}
 
 	get width() {return this.size.x;}
 	get height() {return this.size.y;}
-	get elements() {return [].concat(this.walls, this.flags, this.spikes, this.bombs)}
 
 	clone() {
 		return new Vectorizer.VectorMap({
-			walls: this.walls.map(w => w.clone()),
-			flags: this.flags.map(f => f.clone()),
-			spikes: this.spikes.map(s => s.clone()),
-			bombs: this.bombs.map(b => b.clone())
+			elements: {
+				walls: this.elements.walls.map(w => w.clone()),
+				flags: this.elements.flags.map(f => f.clone()),
+				spikes: this.elements.spikes.map(s => s.clone()),
+				bombs: this.elements.bombs.map(b => b.clone())
+			}
 		});
 	}
 
@@ -48,27 +51,48 @@ Vectorizer.VectorMap = class VectorMap {
 		if(!disableNormalization) this.normalize();
 	}
 
+	getElements() {
+		return ELEMENT_TYPES.reduce(
+			(acc, e) => acc.concat(this.elements[e.toLowerCase()]),
+			[]
+		);
+	}
+
+	setElements(elementsObj, disableNormalization) {
+		this.elements = {
+			...this.elements,
+			...elementsObj
+		};
+
+		if(!disableNormalization) this.normalize();
+	}
+
 	// Recalculates map properties
 	normalize() {
-		VectorUtilities.roundMapPositions(this);
-		ELEMENT_TYPES.map(e => e.toLowerCase()).forEach(elem => {
-			this[elem] = Vectorizer.reframeElements(this[elem]);
-		});
+		const allElements = this.getElements();
+		if(allElements.length === 0) return;
 
-		this.size = VectorUtilities.getMaxVectorFromElements(this.elements);
+		VectorUtilities.roundElementPositions(allElements);
+
+		// Reframe the map so that the element closest to the top left corner becomes the origin for the entire map.
+		let translationVector = VectorUtilities.getMinVectorFromElements(allElements).multiply(-1);
+		VectorUtilities.translateElements(allElements, translationVector);
+
+		this.size = VectorUtilities.getMaxVectorFromElements(allElements);
+
 		this.planarSets = VectorUtilities.generatePlanarSetsFromVectorMap(this);
 		this.pathFindingMap = Vectorizer.generatePathFindingMap(this).tileMap;
 	}
 
-	symmetrize(symmetry) {
-		// Normalization is disabled so the dimensions stay the same.
-		// This is required so that the mirroring is accurate.
-		Vectorizer.sliceMap(this, symmetry, true);
+	symmetrize(symmetry, settings={}) {
+		Vectorizer.sliceMap(this, symmetry);
 		Vectorizer.symmetrizeMap(this, symmetry);
 
-		this.set({
+		if(settings.fillWallHoles) this.setElements({
 			walls: Vectorizer.fillWallHoles(this.walls)
-		});
+		}, true);
+
+		this.normalize();
 
 		return this;
 	}
@@ -87,11 +111,13 @@ require('./vectorizer_funcs/Tracers')(Vectorizer);
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
-	const { flags, bombs, spikes } = VectorUtilities.getVectorElementsFromTileMap(tileMap);
+	const { flags, bombs, spikes } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
-		walls: Vectorizer.getLinesFromWallMap(wallMap),
-		flags, bombs, spikes
+		elements: {
+			walls: Vectorizer.getLinesFromWallMap(wallMap),
+			flags, bombs, spikes
+		}
 	});
 
 	return vectorMap;
@@ -104,10 +130,10 @@ Vectorizer.createTileMapFromVectorMap = vectorMap => {
 		mapWidth: vectorMap.width + 1,
 		mapHeight: vectorMap.height + 1,
 		callback: (tileMap, point, detector) => {
-			for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
+			for (let i = vectorMap.elements.walls.length - 1; i >= 0; i--) {
 				if(
-					vectorMap.walls[i].intersect(detector).length ||
-					vectorMap.walls[i].start.equalTo(point)
+					vectorMap.elements.walls[i].shape.intersect(detector).length ||
+					vectorMap.elements.walls[i].shape.start.equalTo(point)
 				) {
 					tileMap[point.y][point.x] = TILE_IDS.WALL;
 					break;
@@ -136,34 +162,8 @@ Vectorizer.generatePathFindingMap = vectorMap => {
 	return {tileMap, detectors};
 };
 
-VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
-	let planarSets = {};
-
-	// Puts all impassible-type element shapes into a planar set
-	planarSets.immpassible = VectorUtilities.generatePlanarSetFromElementArrays(
-		vectorMap.walls,
-		vectorMap.spikes
-	);
-
-	// Puts all semipassible-type element shapes into a planar set
-	planarSets.semipassible = VectorUtilities.generatePlanarSetFromElementArrays(
-		vectorMap.flags,
-		vectorMap.bombs
-	);
-
-	// Puts all element shapes into a planar set
-	planarSets.all = VectorUtilities.generatePlanarSetFromElementArrays(
-		vectorMap.walls,
-		vectorMap.spikes,
-		vectorMap.flags,
-		vectorMap.bombs
-	);
-
-	return planarSets;
-};
-
 // Slices a vector map in half
-Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
+Vectorizer.sliceMap = (vectorMap, symmetry) => {
 	let sliceLine = VectorUtilities.getSliceLineFromSymmetry(vectorMap, symmetry);
 
 	// Slice all the different types of elements.
@@ -171,10 +171,10 @@ Vectorizer.sliceMap = (vectorMap, symmetry, disableNormalization) => {
 	let newElements = {};
 
 	for (let i = sliceableElements.length - 1; i >= 0; i--) {
-		newElements[sliceableElements[i]] = VectorUtilities.sliceVectorElements(vectorMap[sliceableElements[i]], sliceLine);
+		newElements[sliceableElements[i]] = VectorUtilities.sliceVectorElements(vectorMap.elements[sliceableElements[i]], sliceLine);
 	}
 
-	vectorMap.set(newElements, disableNormalization);
+	vectorMap.setElements(newElements, true);
 
 	return vectorMap;
 };
@@ -185,40 +185,19 @@ Vectorizer.symmetrizeMap = (vectorMap, symmetry) => {
 
 	if(SYMMETRY_FUNCTIONS[symmetry]) mirrorFunc = p => SYMMETRY_FUNCTIONS[symmetry](vectorMap, p);
 
-	let newMapWalls = VectorUtilities.mirrorVectorElements(vectorMap.walls, mirrorFunc, { duplicate: true });
-	// Set the walls and recalculate the map size so that the remaining elements are correctly mirrored.
-	vectorMap.set({ walls: newMapWalls });
-
 	// Mirror all the different types of elements.
-	let mirrorableElements = ["flags", "bombs", "spikes"];
+	let mirrorableElements = ["walls", "flags", "bombs", "spikes"];
 	let newElements = {};
 
 	for (let i = mirrorableElements.length - 1; i >= 0; i--) {
 		newElements[mirrorableElements[i]] = VectorUtilities.mirrorVectorElements(
-			vectorMap[mirrorableElements[i]], mirrorFunc, { duplicate: true }
+			vectorMap.elements[mirrorableElements[i]], mirrorFunc, { duplicate: true }
 		);
 	}
 
-	vectorMap.set(newElements);
+	vectorMap.setElements(newElements, true);
 
-	return newMapWalls;
-};
-
-// Pushes elements with negative positions into positive positions.
-Vectorizer.reframeElements = elements => {
-	let translationVector = VectorUtilities.getMinVectorFromElements(elements);
-	translationVector = translationVector.multiply(-1);
-	for (let i = elements.length - 1; i >= 0; i--) {
-		const element = elements[i];
-
-		if(element.constructor.name === "Segment" || element.constructor.name === "Point") {
-			elements[i] = element.translate(translationVector);
-		} else if(element.point) {
-			elements[i].point = element.point.translate(translationVector)
-		}
-	}
-
-	return elements;
+	return vectorMap;
 };
 
 module.exports = Vectorizer;

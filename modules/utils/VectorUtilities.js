@@ -20,6 +20,11 @@ VectorUtilities.tileMapGenerator = (inputSettings={}) => {
 		...inputSettings
 	};
 
+	if(
+		!Utilities.isSafeArrayLength(settings.mapWidth) ||
+		!Utilities.isSafeArrayLength(settings.mapHeight)
+	) throw new Error("Invalid tile map dimensions: " + JSON.stringify(settings));
+
 	let tileMap = Utilities.createEmpty2dArray(settings.mapWidth, settings.mapHeight);
 	let detectors = [];
 
@@ -42,38 +47,64 @@ VectorUtilities.tileMapGenerator = (inputSettings={}) => {
 };
 
 // Converts an array of element arrays into a singular planar set.
-VectorUtilities.generatePlanarSetFromElementArrays = (...elementArrays) => {
+VectorUtilities.generatePlanarSetFromElements = (...elementArrays) => {
 	let shapes = [
-		...[...elementArrays.map(a => a.map(e => e.point || e))]
+		...[...elementArrays.map(a => a.map(e => e.shape))]
 	].flat();
 	
 	return GeometryUtilities.createPlanarSet(shapes);
 };
 
-// Moves all wall segments at a point to another point.
-VectorUtilities.translateWallsAtPoint = (wallSegments, oldPoint, newPoint) => {
-	let affectedWallSegments = {};
+VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
+	let planarSets = {};
 
-	for (let i = wallSegments.length - 1; i >= 0; i--) {
-		const segmentHash = GeometryUtilities.hashSegment(wallSegments[i]);
+	// Puts all impassible-type element shapes into a planar set
+	planarSets.immpassible = VectorUtilities.generatePlanarSetFromElements(
+		vectorMap.elements.walls,
+		vectorMap.elements.spikes
+	);
 
-		if(wallSegments[i].start.equalTo(oldPoint) && !newPoint.equalTo(wallSegments[i].start)) {
-			wallSegments[i] = new Segment(newPoint, wallSegments[i].end);
-			const newSegmentHash = GeometryUtilities.hashSegment(wallSegments[i]);
+	// Puts all semipassible-type element shapes into a planar set
+	planarSets.semipassible = VectorUtilities.generatePlanarSetFromElements(
+		vectorMap.elements.flags,
+		vectorMap.elements.bombs
+	);
 
-			affectedWallSegments[segmentHash] = true;
-			affectedWallSegments[newSegmentHash] = true;
+	// Puts all element shapes into a planar set
+	planarSets.all = VectorUtilities.generatePlanarSetFromElements(
+		vectorMap.elements.walls,
+		vectorMap.elements.spikes,
+		vectorMap.elements.flags,
+		vectorMap.elements.bombs
+	);
+
+	return planarSets;
+};
+
+// Moves all wall elements at a point to another point.
+VectorUtilities.translateWallsAtPoint = (wallElements, oldPoint, newPoint) => {
+	let affectedWallElements = {};
+
+	for (let i = wallElements.length - 1; i >= 0; i--) {
+		const segmentHash = GeometryUtilities.hashSegment(wallElements[i].shape);
+
+		if(wallElements[i].shape.start.equalTo(oldPoint) && !newPoint.equalTo(wallElements[i].shape.start)) {
+			wallElements[i].shape = new Segment(newPoint, wallElements[i].shape.end);
+			const newSegmentHash = GeometryUtilities.hashSegment(wallElements[i].shape);
+
+			affectedWallElements[segmentHash] = true;
+			affectedWallElements[newSegmentHash] = true;
 		}
-		if(wallSegments[i].end.equalTo(oldPoint) && !newPoint.equalTo(wallSegments[i].end)) {
-			wallSegments[i] = new Segment(wallSegments[i].start, newPoint);
-			const newSegmentHash = GeometryUtilities.hashSegment(wallSegments[i]);
+		if(wallElements[i].shape.end.equalTo(oldPoint) && !newPoint.equalTo(wallElements[i].shape.end)) {
+			wallElements[i].shape = new Segment(wallElements[i].shape.start, newPoint);
+			const newSegmentHash = GeometryUtilities.hashSegment(wallElements[i].shape);
 			
-			affectedWallSegments[segmentHash] = true;
-			affectedWallSegments[newSegmentHash] = true;
+			affectedWallElements[segmentHash] = true;
+			affectedWallElements[newSegmentHash] = true;
 		}
 	}
 
-	return affectedWallSegments;
+	return affectedWallElements;
 };
 
 VectorUtilities.getFlagPair = flags => [
@@ -82,23 +113,18 @@ VectorUtilities.getFlagPair = flags => [
 ];
 
 VectorUtilities.elementsToPoints = elements => elements.reduce((acc, elem) => {
-	if(elem.point) acc.push(elem.point);
-	else if(elem.start && elem.end) return acc.concat([elem.start, elem.end]);
-	else if(elem.x && elem.y) acc.push(elem);
+	if(elem.shapeType === "Point") acc.push(elem.shape);
+	else if(elem.shapeType === "Segment") return acc.concat([elem.shape.start, elem.shape.end]);
 
 	return acc;
 }, []);
 
-VectorUtilities.roundMapPositions = vectorMap => {
-	for (let i = vectorMap.walls.length - 1; i >= 0; i--) {
-		vectorMap.walls[i].start = GeometryUtilities.roundPoint(vectorMap.walls[i].start);
-		vectorMap.walls[i].end = GeometryUtilities.roundPoint(vectorMap.walls[i].end);
-	}
-
-	return vectorMap.walls;
+VectorUtilities.roundElementPositions = elements => {
+	for (let i = elements.length - 1; i >= 0; i--) elements[i].round();
+	return elements;
 };
 
-VectorUtilities.getVectorElementsFromTileMap = tileMap => {
+VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 	let flags = [];
 	let spikes = [];
 	let bombs = [];
@@ -107,14 +133,32 @@ VectorUtilities.getVectorElementsFromTileMap = tileMap => {
 		for (let x = 0; x < tileMap[0].length; x++) {
 			const isTile = id => tileMap[y][x] === id;
 
-			if(isTile(TILE_IDS.REDFLAG)) flags.push(new Elements.Flag(x, y, TEAMS.RED));
-			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag(x, y, TEAMS.BLUE));
-			else if(isTile(TILE_IDS.SPIKE)) spikes.push(new Elements.Spike(x, y));
-			else if(isTile(TILE_IDS.BOMB)) bombs.push(new Elements.Bomb(x, y));
+			if(isTile(TILE_IDS.REDFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.RED));
+			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.BLUE));
+			else if(isTile(TILE_IDS.SPIKE)) spikes.push(new Elements.Spike({x, y}));
+			else if(isTile(TILE_IDS.BOMB)) bombs.push(new Elements.Bomb({x, y}));
 		}
 	}
 
 	return { flags, spikes, bombs };
+};
+
+// Iterates through all elements in an array
+// If the callback function returns "true", the iterator will stop.
+VectorUtilities.iterateElements = (elements, func) => {
+	if(typeof func !== "function") throw new Error("Invalid iteration function");
+
+	for (let i = elements.length - 1; i >= 0; i--) {
+		let response = func(
+			elements[i], // Element object
+			elements[i].shape, // Flatten-js shape object
+			elements[i].shapeType // Flatten-js shape type
+		);
+
+		if(response) break;
+	}
+
+	return elements;
 };
 
 VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
@@ -126,38 +170,37 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 	const [lA, lB, lC] = sliceLine.standard;
 	const isPointSafe = point => (point.y - SAFE_ZONE_TOLERANCE) >= (lC - (lA * (point.x - SAFE_ZONE_TOLERANCE))) / lB;
 
-	for (let i = elements.length - 1; i >= 0; i--) {
+	VectorUtilities.iterateElements(elements, (elem, shape, shapeType) => {
 		let intersection;
 
-		// Detect if both ends of a segment are inside the safe-zone.
-		if(elements[i].constructor.name === "Segment") {
-			if(isPointSafe(elements[i].start) && isPointSafe(elements[i].end)) {
-				newElements.push(elements[i]);
-			} else if(intersection = elements[i].intersect(sliceLine)){ // If the segment intersects with the safe-zone border, slice it inhalf.
-				if(intersection.length === 0) continue;
+		if(shapeType === "Segment") {
+			if(isPointSafe(shape.start) && isPointSafe(shape.end)) {
+				newElements.push(elem);
+			} else if(intersection = shape.intersect(sliceLine)){ // If the segment intersects with the safe-zone border, slice it inhalf.
+				if(intersection.length === 0) return;
 
-				let slicedSegments = elements[i].split(intersection[0]);
+				let slicedSegments = shape.split(intersection[0]);
 				// Finds the segment that is on the safe side
 				let safeSlice = slicedSegments.find(s => s && (
 					isPointSafe(s.start) && isPointSafe(s.end)
 				));
 
-				if(safeSlice) newElements.push(safeSlice);
+				if(safeSlice) newElements.push(elem.clone().update({
+					shape: safeSlice
+				}));
 			}
-		} else if(elements[i].point) {
-			const elementPoint = elements[i].point;
-			if(isPointSafe(elementPoint)) {
-				newElements.push(elements[i]);
-			}
+		} else if(shapeType === "Point") {
+			if(isPointSafe(shape)) newElements.push(elem);
 		}
-	}
+	});
 
 	return newElements;
 };
 
 VectorUtilities.getMinVectorFromElements = elements => {
-	let minVector = new Vector(Infinity, Infinity);
 	const points = VectorUtilities.elementsToPoints(elements);
+	let minVector = points[0];
+	if(!minVector) return new Vector(0, 0);
 
 	for (let i = points.length - 1; i >= 0; i--) minVector = GeometryUtilities.minVector(
 		points[i],
@@ -168,9 +211,9 @@ VectorUtilities.getMinVectorFromElements = elements => {
 };
 
 VectorUtilities.getMaxVectorFromElements = elements => {
-	let maxVector = new Vector(0, 0);
-
 	const points = VectorUtilities.elementsToPoints(elements);
+	let maxVector = points[0];
+	if(!maxVector) return new Vector(0, 0);
 
 	for (let i = points.length - 1; i >= 0; i--) maxVector = GeometryUtilities.maxVector(
 		points[i],
@@ -180,53 +223,52 @@ VectorUtilities.getMaxVectorFromElements = elements => {
 	return GeometryUtilities.roundPoint(new Vector(maxVector.x, maxVector.y));
 };
 
+// Translates all elements in an array
+VectorUtilities.translateElements = (elements, vector) => {
+	VectorUtilities.iterateElements(elements, elem => {
+		elem.translate(vector);
+	});
+
+	return elements;
+};
+
 VectorUtilities.mirrorVectorElements = (elements, mirrorFunc, settings={}) => {
 	const newElements = [];
 
-	for (let i = elements.length - 1; i >= 0; i--) {
-		let element = elements[i];
+	VectorUtilities.iterateElements(elements, (elem, shape, shapeType) => {
+		let updateObj = {};
 
-		if(settings.duplicate) newElements.push(element);
-		if(element.constructor.name === "Segment") {
-			const mirrorStart = mirrorFunc(element.start);
-			const mirrorEnd = mirrorFunc(element.end);
+		if(settings.duplicate) newElements.push(elem);
+		if(elem.team) updateObj.team = elem.team === TEAMS.RED ? TEAMS.BLUE : TEAMS.RED;
+
+		if(shapeType === "Segment") {
+			const mirrorStart = mirrorFunc(shape.start);
+			const mirrorEnd = mirrorFunc(shape.end);
 
 			// Centered Element Check
 			if(
-				GeometryUtilities.pointsEqualTo(mirrorStart, element.start) &&
-				GeometryUtilities.pointsEqualTo(mirrorEnd, element.end)
-			) continue;
+				GeometryUtilities.pointsEqualTo(mirrorStart, shape.start) &&
+				GeometryUtilities.pointsEqualTo(mirrorEnd, shape.end)
+			) return;
 			
-			for (let i = mirrorStart.length - 1; i >= 0; i--) newElements.push(
-				new Segment(mirrorStart[i], mirrorEnd[i])
-			);
-		} else if(element.point) {
-			const mirrorPoints = mirrorFunc(element.point);
+			for (let i = mirrorStart.length - 1; i >= 0; i--) {
+				updateObj.shape = new Segment(mirrorStart[i], mirrorEnd[i]);
+				newElements.push(elem.clone().update(updateObj));
+			}
+		} else if(shapeType === "Point") {
+			const mirrorPoints = mirrorFunc(shape);
+
 			// Centered Element Check
 			if(
-				GeometryUtilities.pointsEqualTo(mirrorPoints, element.point)
-			) continue;
-
-			let newTeam;
-			if(element.team) newTeam = element.team === TEAMS.RED ? TEAMS.BLUE : TEAMS.RED;
+				GeometryUtilities.pointsEqualTo(mirrorPoints, shape)
+			) return;
 
 			for (let i = mirrorPoints.length - 1; i >= 0; i--) {
-				const newElement = elements[i].clone();
-				newElement.point = mirrorPoints[i];
-				if(newTeam) newElement.team = newTeam;
-
-				newElements.push(newElement);
+				updateObj.shape = new Point(mirrorPoints[i].x, mirrorPoints[i].y);
+				newElements.push(elem.clone().update(updateObj));
 			}
-		} else if(element.constructor.name === "Point") {
-			const mirrorPoints = mirrorFunc(element);
-			// Centered Element Check
-			if(
-				GeometryUtilities.pointsEqualTo(mirrorPoints, element)
-			) continue;
-
-			for (let i = mirrorPoints.length - 1; i >= 0; i--) newElements.push(mirrorPoints[i]);
 		}
-	}
+	});
 
 	return newElements;
 };
@@ -251,15 +293,18 @@ VectorUtilities.getClosestSymmetricRelationshipBetweenElements = ({width, height
 	}), {});
 
 	const points = VectorUtilities.elementsToPoints(elements);
-	const doesPointExist = p => points.some(p2 => p.equalTo(p2));
+	const pointMap = points.reduce((acc, p) => ({
+		...acc,
+		[`${Math.floor(p.x)},${Math.floor(p.y)}`]: true
+	}), {});
+	const doesPointExist = p => pointMap[`${Math.floor(p.x)},${Math.floor(p.y)}`] || false;
 
 	for (let i = points.length - 1; i >= 0; i--) {
 		const point = points[i];
 
 		symmetryNames.forEach(sym => {
-			if(
-				SYMMETRY_FUNCTIONS[SYMMETRY[sym]]({width, height}, point).every(doesPointExist)
-			) symmetryScore[sym]++;
+			const mirroredPoints = SYMMETRY_FUNCTIONS[SYMMETRY[sym]]({width, height}, point);
+			if(mirroredPoints.every(doesPointExist)) symmetryScore[sym]++;
 		});
 	}
 
