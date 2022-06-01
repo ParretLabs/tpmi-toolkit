@@ -1,7 +1,7 @@
 // Third-Level Utility (Can access Second-level utilities)
 // For working with VectorMaps
 
-const { Point, Segment, Vector, Box, Line } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box, Line, Polygon, Multiline } = require('@flatten-js/core');
 
 const { TILE_IDS, TEAMS, SYMMETRY, SYMMETRY_FUNCTIONS } = require('../CONSTANTS');
 const Elements = require('../types/Elements');
@@ -82,6 +82,7 @@ VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
 		vectorMap.elements.flags,
 		vectorMap.elements.bombs,
 		vectorMap.elements.boosts,
+		vectorMap.elements.portals,
 		vectorMap.elements.gates
 	);
 
@@ -92,6 +93,7 @@ VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
 		vectorMap.elements.spikes,
 		vectorMap.elements.flags,
 		vectorMap.elements.bombs,
+		vectorMap.elements.portals,
 		vectorMap.elements.boosts,
 		vectorMap.elements.buttons,
 		vectorMap.elements.powerups,
@@ -145,6 +147,7 @@ VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 	let flags = [];
 	let spikes = [];
 	let bombs = [];
+	let portals = [];
 	let boosts = [];
 	let powerups = [];
 	let buttons = [];
@@ -157,6 +160,7 @@ VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.BLUE));
 			else if(isTile(TILE_IDS.SPIKE)) spikes.push(new Elements.Spike({x, y}));
 			else if(isTile(TILE_IDS.BOMB)) bombs.push(new Elements.Bomb({x, y}));
+			else if(isTile(TILE_IDS.PORTAL)) portals.push(new Elements.Portal({x, y}));
 			else if(isTile(TILE_IDS.BOOST)) boosts.push(new Elements.Boost({x, y}, TEAMS.NONE));
 			else if(isTile(TILE_IDS.BUTTON)) buttons.push(new Elements.Button({x, y}));
 			else if(isTile(TILE_IDS.REDBOOST)) boosts.push(new Elements.Boost({x, y}, TEAMS.RED));
@@ -165,7 +169,7 @@ VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 		}
 	}
 
-	return { flags, spikes, bombs, boosts, powerups, buttons };
+	return { flags, spikes, bombs, boosts, powerups, buttons, portals };
 };
 
 // Iterates through all elements in an array
@@ -184,42 +188,6 @@ VectorUtilities.iterateElements = (elements, func) => {
 	}
 
 	return elements;
-};
-
-VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
-	// Safe zone tolerance ensures that elements directly within the middle of the map are safe.
-	const SAFE_ZONE_TOLERANCE = 0.0000001;
-
-	const newElements = [];
-
-	const [lA, lB, lC] = sliceLine.standard;
-	const isPointSafe = point => (point.y - SAFE_ZONE_TOLERANCE) >= (lC - (lA * (point.x - SAFE_ZONE_TOLERANCE))) / lB;
-
-	VectorUtilities.iterateElements(elements, (elem, shape, shapeType) => {
-		let intersection;
-
-		if(shapeType === "Segment") {
-			if(isPointSafe(shape.start) && isPointSafe(shape.end)) {
-				newElements.push(elem);
-			} else if(intersection = shape.intersect(sliceLine)){ // If the segment intersects with the safe-zone border, slice it inhalf.
-				if(intersection.length === 0) return;
-
-				let slicedSegments = shape.split(intersection[0]);
-				// Finds the segment that is on the safe side
-				let safeSlice = slicedSegments.find(s => s && (
-					isPointSafe(s.start) && isPointSafe(s.end)
-				));
-
-				if(safeSlice) newElements.push(elem.clone().update({
-					shape: safeSlice
-				}));
-			}
-		} else if(shapeType === "Point") {
-			if(isPointSafe(shape)) newElements.push(elem);
-		}
-	});
-
-	return newElements;
 };
 
 VectorUtilities.getMinVectorFromElements = elements => {
@@ -257,6 +225,63 @@ VectorUtilities.translateElements = (elements, vector) => {
 	return elements;
 };
 
+VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
+	// Safe zone tolerance ensures that elements directly within the middle of the map are safe.
+	const SAFE_ZONE_TOLERANCE = 0.0000001;
+
+	const newElements = [];
+
+	const [lA, lB, lC] = sliceLine.standard;
+	const isPointSafe = point => (point.y - SAFE_ZONE_TOLERANCE) >= (lC - (lA * (point.x - SAFE_ZONE_TOLERANCE))) / lB;
+	const arePointsSafe = points => points.every(isPointSafe);
+
+	VectorUtilities.iterateElements(elements, (elem, shape, shapeType) => {
+		let intersection;
+
+		if(shapeType === "Segment") {
+			if(isPointSafe(shape.start) && isPointSafe(shape.end)) {
+				newElements.push(elem);
+			} else if(intersection = shape.intersect(sliceLine) && intersection.length > 0){ // If the segment intersects with the safe-zone border, slice it inhalf.
+				if(intersection.length === 0) return;
+
+				let slicedSegments = shape.split(intersection[0]);
+				// Finds the segment that is on the safe side
+				let safeSlice = slicedSegments.find(s => s && (
+					isPointSafe(s.start) && isPointSafe(s.end)
+				));
+
+				if(safeSlice) newElements.push(elem.clone().update({
+					shape: safeSlice
+				}));
+			}
+		} else if(shapeType === "Point") {
+			if(isPointSafe(shape)) newElements.push(elem);
+		} else if(shapeType === "Polygon") {
+			if(arePointsSafe(shape.vertices)) {
+				newElements.push(elem);
+			} else if(intersection = shape.intersect(sliceLine)){
+				if(intersection.length === 0) return;
+
+				let sortedPoints = sliceLine.sortPoints(intersection);
+				// Use 2 points only
+				sortedPoints = [sortedPoints[0], sortedPoints[1]];
+				if(!sortedPoints[0] || !sortedPoints[1]) return;
+
+				const slicedPolygons = shape.cut(new Multiline([sliceLine]).split(sortedPoints));
+
+				// Find the polygon on the safe side
+				const safeSide = slicedPolygons.find(poly => poly && arePointsSafe(poly.vertices));
+
+				if(safeSide) newElements.push(elem.clone().update({
+					shape: safeSide
+				}));
+			}
+		}
+	});
+
+	return newElements;
+};
+
 VectorUtilities.mirrorVectorElements = (elements, mirrorFunc, settings={}) => {
 	const newElements = [];
 
@@ -290,6 +315,13 @@ VectorUtilities.mirrorVectorElements = (elements, mirrorFunc, settings={}) => {
 
 			for (let i = mirrorPoints.length - 1; i >= 0; i--) {
 				updateObj.shape = new Point(mirrorPoints[i].x, mirrorPoints[i].y);
+				newElements.push(elem.clone().update(updateObj));
+			}
+		} else if(shapeType === "Polygon") {
+			const mirrorPoints = shape.vertices.map(p => mirrorFunc(p));
+
+			for (let i = mirrorPoints.length - 1; i >= 0; i--) {
+				updateObj.shape = new Polygon(mirrorPoints[i]);
 				newElements.push(elem.clone().update(updateObj));
 			}
 		}

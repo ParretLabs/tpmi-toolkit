@@ -11,7 +11,7 @@ Elements.BaseElement = class BaseElement {
 			this.shape = new Point(data.x, data.y);
 		} else if(data.ps && data.pe) {
 			this.shape = new Segment(data.ps, data.pe);
-		} else if(data[0] && typeof data[0].x === "number" && typeof data[0].y === "number") {
+		} else if(Array.isArray(data)) {
 			this.shape = new Polygon(data);
 		} else {
 			throw new Error("Invalid Element Shape: " + JSON.stringify(data));
@@ -73,17 +73,29 @@ Elements.OuterWall = class OuterWall extends Elements.BaseElement {
 	constructor(vertices){
 		super(vertices);
 	}
+
+	clone() {
+		return new Elements[this.constructor.name](this.shape.vertices);
+	}
 }
 
 Elements.Island = class Island extends Elements.BaseElement {
 	constructor(vertices){
 		super(vertices);
 	}
+
+	clone() {
+		return new Elements[this.constructor.name](this.shape.vertices);
+	}
 }
 
 Elements.Gate = class Gate extends Elements.BaseElement {
 	constructor(vertices){
 		super(vertices);
+	}
+
+	clone() {
+		return new Elements[this.constructor.name](this.shape.vertices);
 	}
 }
 
@@ -96,7 +108,7 @@ Elements.Flag = class Flag extends Elements.BaseElement {
 
 	visualize() {
 		return this.shape.svg({
-			r: 0.5,
+			r: 0.4,
 			strokeWidth: 0.1,
 			fill: this.team === TEAMS.RED ? "red" : "blue"
 		});
@@ -114,7 +126,7 @@ Elements.Spike = class Spike extends Elements.BaseElement {
 
 	visualize() {
 		return this.shape.svg({
-			r: 0.5,
+			r: 0.4,
 			strokeWidth: 0.1,
 			fill: "gray"
 		});
@@ -128,9 +140,9 @@ Elements.Bomb = class Bomb extends Elements.BaseElement {
 
 	visualize() {
 		return this.shape.svg({
-			r: 0.5,
+			r: 0.4,
 			strokeWidth: 0.1,
-			fill: "black"
+			fill: "#222"
 		});
 	}
 }
@@ -165,7 +177,7 @@ Elements.Powerup = class Powerup extends Elements.BaseElement {
 
 	visualize() {
 		return this.shape.svg({
-			r: 0.5,
+			r: 0.4,
 			strokeWidth: 0.1,
 			fill: "green"
 		});
@@ -182,6 +194,20 @@ Elements.Button = class Button extends Elements.BaseElement {
 			r: 0.25,
 			strokeWidth: 0.1,
 			fill: "chocolate"
+		});
+	}
+}
+
+Elements.Portal = class Portal extends Elements.BaseElement {
+	constructor({x, y}){
+		super({x, y});
+	}
+
+	visualize() {
+		return this.shape.svg({
+			r: 0.4,
+			strokeWidth: 0.1,
+			fill: "mediumpurple"
 		});
 	}
 }

@@ -23,6 +23,7 @@ Vectorizer.VectorMap = class VectorMap {
 			flags: elements.flags || [],
 			spikes: elements.spikes || [],
 			bombs: elements.bombs || [],
+			portals: elements.portals || [],
 			boosts: elements.boosts || [],
 			powerups: elements.powerups || [],
 			buttons: elements.buttons || [],
@@ -48,6 +49,7 @@ Vectorizer.VectorMap = class VectorMap {
 				flags: this.elements.flags.map(f => f.clone()),
 				spikes: this.elements.spikes.map(s => s.clone()),
 				bombs: this.elements.bombs.map(b => b.clone()),
+				portals: this.elements.portals.map(p => p.clone()),
 				boosts: this.elements.boosts.map(b => b.clone()),
 				powerups: this.elements.powerups.map(p => p.clone()),
 				buttons: this.elements.buttons.map(b => b.clone()),
@@ -122,16 +124,16 @@ require('./vectorizer_funcs/Tracers')(Vectorizer);
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const impassableMap = MapUtilities.tileMapToImpassableMap(tileMap);
-	const gates = Vectorizer.traceClusteredElementsFromMap(tileMap, tileMap, TILE_IDS.GATE);
-	const { flags, bombs, spikes, boosts, powerups, buttons } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
+	const { flags, bombs, spikes, boosts, powerups, buttons, portals } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
 	const { outerWall, islands } = Vectorizer.getWallVectors(impassableMap);
+	const gates = Vectorizer.traceClusteredElementsFromMap(tileMap, tileMap, TILE_IDS.GATE);
 
 	let vectorMap = new Vectorizer.VectorMap({
 		elements: {
 			outerWall: new Elements.OuterWall(outerWall),
 			islands: islands.map(i => new Elements.Island(i)),
 			gates: gates.map(g => new Elements.Gate(g)),
-			flags, bombs, spikes, boosts, powerups, buttons
+			flags, bombs, spikes, boosts, powerups, buttons, portals
 		}
 	});
 
@@ -189,6 +191,8 @@ Vectorizer.sliceMap = (vectorMap, symmetry) => {
 		newElements[sliceableElements[i]] = VectorUtilities.sliceVectorElements(vectorMap.elements[sliceableElements[i]], sliceLine);
 	}
 
+	newElements.outerWall = VectorUtilities.sliceVectorElements([vectorMap.elements.outerWall], sliceLine)[0];
+
 	vectorMap.setElements(newElements, true);
 
 	return vectorMap;
@@ -209,6 +213,10 @@ Vectorizer.symmetrizeMap = (vectorMap, symmetry) => {
 			vectorMap.elements[mirrorableElements[i]], mirrorFunc, { duplicate: true }
 		);
 	}
+
+	newElements.outerWall = VectorUtilities.mirrorVectorElements(
+		[vectorMap.elements.outerWall], mirrorFunc, { duplicate: true }
+	)[0];
 
 	vectorMap.setElements(newElements, true);
 
