@@ -1,4 +1,5 @@
 const { Point, Segment, Vector, Box, Line, Polygon } = require('@flatten-js/core');
+const concaveman = require('concaveman');
 
 const Elements = require('./types/Elements');
 const Utilities = require('./utils/Utilities');
@@ -214,9 +215,12 @@ Vectorizer.symmetrizeMap = (vectorMap, symmetry) => {
 		);
 	}
 
-	newElements.outerWall = VectorUtilities.mirrorVectorElements(
+	const newOuterWallPoints = VectorUtilities.mirrorVectorElements(
 		[vectorMap.elements.outerWall], mirrorFunc, { duplicate: true }
-	)[0];
+	).map(ow => ow.toPoints()).flat();
+
+	const allWallPoints = concaveman(newOuterWallPoints.map(p => [p.x, p.y]), 1);
+	newElements.outerWall = new Elements.OuterWall(allWallPoints);
 
 	vectorMap.setElements(newElements, true);
 

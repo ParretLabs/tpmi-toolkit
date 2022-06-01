@@ -318,10 +318,17 @@ VectorUtilities.mirrorVectorElements = (elements, mirrorFunc, settings={}) => {
 				newElements.push(elem.clone().update(updateObj));
 			}
 		} else if(shapeType === "Polygon") {
-			const mirrorPoints = shape.vertices.map(p => mirrorFunc(p));
+			const mirrorPointsSorted = [];
+			shape.vertices.forEach(p => {
+				const mirrorPoints = mirrorFunc(p);
+				for (let i = mirrorPoints.length - 1; i >= 0; i--) {
+					if(!mirrorPointsSorted[i]) mirrorPointsSorted[i] = [];
+					mirrorPointsSorted[i].push(mirrorPoints[i]);
+				}
+			});
 
-			for (let i = mirrorPoints.length - 1; i >= 0; i--) {
-				updateObj.shape = new Polygon(mirrorPoints[i]);
+			for (let i = mirrorPointsSorted.length - 1; i >= 0; i--) {
+				updateObj.shape = new Polygon(mirrorPointsSorted[i]);
 				newElements.push(elem.clone().update(updateObj));
 			}
 		}
