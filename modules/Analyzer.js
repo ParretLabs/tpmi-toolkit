@@ -108,8 +108,6 @@ Analyzer.detectVectorMapSymmetry = {
 			}
 		}
 
-		console.log(symmetryScore);
-
 		return symmetryIDs.reduce(
 			(highestScore, sym) => symmetryScore[sym] > highestScore[0] ? [symmetryScore[sym], sym] : highestScore
 		, [0, "A"])[1];
