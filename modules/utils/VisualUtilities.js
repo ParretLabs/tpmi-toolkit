@@ -37,7 +37,7 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 	const islandsSVG = VisualUtilities.generatePolygonSVGs(vectorMap.elements.islands.map(i => i.shape.vertices), "", "island");
 	const gatesSVG = VisualUtilities.generatePolygonSVGs(vectorMap.elements.gates.map(g => g.shape.vertices), "", "gate");
 
-	let elementsSVG = ["flags", "bombs", "spikes", "boosts", "powerups"].reduce((acc, val) => {
+	let elementsSVG = ["flags", "bombs", "spikes", "boosts", "powerups", "buttons"].reduce((acc, val) => {
 		return acc + VisualUtilities.groupSVGElements(vectorMap.elements[val].map(e => e.visualize()));
 	}, "");
 

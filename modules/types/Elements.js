@@ -172,6 +172,20 @@ Elements.Powerup = class Powerup extends Elements.BaseElement {
 	}
 }
 
+Elements.Button = class Button extends Elements.BaseElement {
+	constructor({x, y}){
+		super({x, y});
+	}
+
+	visualize() {
+		return this.shape.svg({
+			r: 0.25,
+			strokeWidth: 0.1,
+			fill: "chocolate"
+		});
+	}
+}
+
 function roundPoint(point) {
 	point.x = Math.round(point.x);
 	point.y = Math.round(point.y);

@@ -34,6 +34,7 @@ TestUtils.getTestMaps = () => new Promise(async (resolve) => {
 			['Some Ring', await mapID(74454)],
 			['Scorpio', await mapID(74456)],
 			['Haste', await mapID(74460)],
+			['Quadrinaros', await mapID(74665)],
 		]);
 	}
 

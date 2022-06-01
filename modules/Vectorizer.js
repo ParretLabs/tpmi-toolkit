@@ -25,6 +25,7 @@ Vectorizer.VectorMap = class VectorMap {
 			bombs: elements.bombs || [],
 			boosts: elements.boosts || [],
 			powerups: elements.powerups || [],
+			buttons: elements.buttons || [],
 			gates: elements.gates || []
 		};
 
@@ -49,6 +50,7 @@ Vectorizer.VectorMap = class VectorMap {
 				bombs: this.elements.bombs.map(b => b.clone()),
 				boosts: this.elements.boosts.map(b => b.clone()),
 				powerups: this.elements.powerups.map(p => p.clone()),
+				buttons: this.elements.buttons.map(b => b.clone()),
 				gates: this.elements.gates.map(g => g.clone())
 			}
 		});
@@ -121,7 +123,7 @@ require('./vectorizer_funcs/Tracers')(Vectorizer);
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const impassableMap = MapUtilities.tileMapToImpassableMap(tileMap);
 	const gates = Vectorizer.traceClusteredElementsFromMap(tileMap, tileMap, TILE_IDS.GATE);
-	const { flags, bombs, spikes, boosts, powerups } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
+	const { flags, bombs, spikes, boosts, powerups, buttons } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
 	const { outerWall, islands } = Vectorizer.getWallVectors(impassableMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
@@ -129,7 +131,7 @@ Vectorizer.createVectorMapFromTileMap = tileMap => {
 			outerWall: new Elements.OuterWall(outerWall),
 			islands: islands.map(i => new Elements.Island(i)),
 			gates: gates.map(g => new Elements.Gate(g)),
-			flags, bombs, spikes, boosts, powerups
+			flags, bombs, spikes, boosts, powerups, buttons
 		}
 	});
 
