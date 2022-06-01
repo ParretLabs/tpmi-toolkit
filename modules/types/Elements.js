@@ -38,7 +38,7 @@ Elements.BaseElement = class BaseElement {
 			roundPoint(this.shape.start);
 			roundPoint(this.shape.end);
 		} else if(this.shapeType === "Polygon") {
-			this.shape = new Polygon(this.shape.verticies.map(p => roundPoint(p)));
+			this.shape = new Polygon(this.shape.vertices.map(p => roundPoint(p)));
 		}
 
 		return this;
@@ -50,7 +50,7 @@ Elements.BaseElement = class BaseElement {
 		} else if(this.shapeType === "Segment") {
 			return [this.shape.start, this.shape.end];
 		} else if(this.shapeType === "Polygon") {
-			return this.shape.verticies;
+			return this.shape.vertices;
 		}
 	}
 
@@ -67,29 +67,23 @@ Elements.Wall = class Wall extends Elements.BaseElement {
 	constructor({ps, pe}){
 		super({ps, pe});
 	}
-
-	clone() {
-		return new Elements[this.constructor.name](this.shape);
-	}
 }
 
 Elements.OuterWall = class OuterWall extends Elements.BaseElement {
-	constructor(verticies){
-		super(verticies);
-	}
-
-	clone() {
-		return new Elements[this.constructor.name](this.shape);
+	constructor(vertices){
+		super(vertices);
 	}
 }
 
 Elements.Island = class Island extends Elements.BaseElement {
-	constructor(verticies){
-		super(verticies);
+	constructor(vertices){
+		super(vertices);
 	}
+}
 
-	clone() {
-		return new Elements[this.constructor.name](this.shape);
+Elements.Gate = class Gate extends Elements.BaseElement {
+	constructor(vertices){
+		super(vertices);
 	}
 }
 
@@ -137,6 +131,43 @@ Elements.Bomb = class Bomb extends Elements.BaseElement {
 			r: 0.5,
 			strokeWidth: 0.1,
 			fill: "black"
+		});
+	}
+}
+
+Elements.Boost = class Boost extends Elements.BaseElement {
+	constructor({x, y}, team){
+		super({x, y});
+
+		this.team = team;
+	}
+
+	visualize() {
+		return `<rect
+			x="${this.shape.x - 0.25}"
+			y="${this.shape.y - 0.25}"
+			width="0.5" height="0.5"
+			class="center"
+			style="fill:${this.team === TEAMS.NONE ? "yellow" : (this.team === TEAMS.RED ? "red" : "blue")};stroke:black;stroke-width: 0.1;"
+			transform="rotate(45)"
+		></rect>`;
+	}
+
+	clone() {
+		return new Elements[this.constructor.name](this.shape, this.team);
+	}
+}
+
+Elements.Powerup = class Powerup extends Elements.BaseElement {
+	constructor({x, y}){
+		super({x, y});
+	}
+
+	visualize() {
+		return this.shape.svg({
+			r: 0.5,
+			strokeWidth: 0.1,
+			fill: "green"
 		});
 	}
 }

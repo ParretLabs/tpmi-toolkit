@@ -1,5 +1,6 @@
 const { Point, Segment, Vector, Box, Line, Polygon } = require('@flatten-js/core');
 
+const Elements = require('./types/Elements');
 const Utilities = require('./utils/Utilities');
 const VectorUtilities = require('./utils/VectorUtilities');
 const MapUtilities = require('./utils/MapUtilities');
@@ -22,6 +23,9 @@ Vectorizer.VectorMap = class VectorMap {
 			flags: elements.flags || [],
 			spikes: elements.spikes || [],
 			bombs: elements.bombs || [],
+			boosts: elements.boosts || [],
+			powerups: elements.powerups || [],
+			gates: elements.gates || []
 		};
 
 		this.planarSets = null;
@@ -42,7 +46,10 @@ Vectorizer.VectorMap = class VectorMap {
 				islands: this.elements.islands.map(i => i.clone()),
 				flags: this.elements.flags.map(f => f.clone()),
 				spikes: this.elements.spikes.map(s => s.clone()),
-				bombs: this.elements.bombs.map(b => b.clone())
+				bombs: this.elements.bombs.map(b => b.clone()),
+				boosts: this.elements.boosts.map(b => b.clone()),
+				powerups: this.elements.powerups.map(p => p.clone()),
+				gates: this.elements.gates.map(g => g.clone())
 			}
 		});
 	}
@@ -74,7 +81,7 @@ Vectorizer.VectorMap = class VectorMap {
 		const allElements = this.getElements();
 		if(allElements.length === 0) return;
 
-		VectorUtilities.roundElementPositions(allElements);
+		// VectorUtilities.roundElementPositions(allElements);
 
 		// Reframe the map so that the element closest to the top left corner becomes the origin for the entire map.
 		let translationVector = VectorUtilities.getMinVectorFromElements(allElements).multiply(-1);
@@ -112,15 +119,17 @@ require('./vectorizer_funcs/fillWallHoles')(Vectorizer);
 require('./vectorizer_funcs/Tracers')(Vectorizer);
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {
-	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
-	const { flags, bombs, spikes } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
-	const { outerWall, islands } = Vectorizer.getWallsFromWallMap(wallMap);
+	const impassableMap = MapUtilities.tileMapToImpassableMap(tileMap);
+	const gates = Vectorizer.traceClusteredElementsFromMap(tileMap, tileMap, TILE_IDS.GATE);
+	const { flags, bombs, spikes, boosts, powerups } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
+	const { outerWall, islands } = Vectorizer.getWallVectors(impassableMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
 		elements: {
-			outerWall: outerWall,
-			islands: islands,
-			flags, bombs, spikes
+			outerWall: new Elements.OuterWall(outerWall),
+			islands: islands.map(i => new Elements.Island(i)),
+			gates: gates.map(g => new Elements.Gate(g)),
+			flags, bombs, spikes, boosts, powerups
 		}
 	});
 
@@ -155,9 +164,9 @@ Vectorizer.generatePathFindingMap = vectorMap => {
 		mapWidth: vectorMap.width,
 		mapHeight: vectorMap.height,
 		callback: (tileMap, point, detector) => {
-			if(vectorMap.planarSets.immpassible.search(detector)) {
+			if(vectorMap.planarSets.immpassable.search(detector)) {
 				return 1;
-			} else if(vectorMap.planarSets.semipassible.search(detector)) {
+			} else if(vectorMap.planarSets.semipassable.search(detector)) {
 				return 2;
 			}
 		}
@@ -171,7 +180,7 @@ Vectorizer.sliceMap = (vectorMap, symmetry) => {
 	let sliceLine = VectorUtilities.getSliceLineFromSymmetry(vectorMap, symmetry);
 
 	// Slice all the different types of elements.
-	let sliceableElements = ["walls", "flags", "bombs", "spikes"];
+	let sliceableElements = ELEMENT_TYPES.map(e => e.toLowerCase());
 	let newElements = {};
 
 	for (let i = sliceableElements.length - 1; i >= 0; i--) {
@@ -190,7 +199,7 @@ Vectorizer.symmetrizeMap = (vectorMap, symmetry) => {
 	if(SYMMETRY_FUNCTIONS[symmetry]) mirrorFunc = p => SYMMETRY_FUNCTIONS[symmetry](vectorMap, p);
 
 	// Mirror all the different types of elements.
-	let mirrorableElements = ["walls", "flags", "bombs", "spikes"];
+	let mirrorableElements = ELEMENT_TYPES.map(e => e.toLowerCase());
 	let newElements = {};
 
 	for (let i = mirrorableElements.length - 1; i >= 0; i--) {

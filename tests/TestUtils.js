@@ -28,7 +28,7 @@ TestUtils.getTestMaps = () => new Promise(async (resolve) => {
 		MAP_DATA = new Map([
 			['EMERALD', await fileMap(74440)],
 			['Willow', await mapID(74490)],
-			['Oak', await mapID(74459)],
+			['Oak', await mapID(74508)],
 			['Half Oak', await mapID(74694)],
 			['Jardim', await mapID(74461)],
 			['Some Ring', await mapID(74454)],

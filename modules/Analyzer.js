@@ -6,7 +6,7 @@ const Utilities = require('./utils/Utilities');
 const VectorUtilities = require('./utils/VectorUtilities');
 const GeometryUtilities = require('./utils/GeometryUtilities');
 
-const { SYMMETRY } = require('./CONSTANTS');
+const { SYMMETRY, ELEMENT_TYPES } = require('./CONSTANTS');
 
 let Analyzer = {};
 
@@ -41,7 +41,7 @@ Analyzer.laneFinder = (vectorMap, inputSettings={}) => {
 			if(lasers[i].clear) continue;
 
 			let laserHeadDetector = GeometryUtilities.createDetector(lasers[i].head.end, {size: settings.detectorSize});
-			let intersectedShape = vectorMap.planarSets.immpassible.search(laserHeadDetector)[0];
+			let intersectedShape = vectorMap.planarSets.immpassable.search(laserHeadDetector)[0];
 
 			// If the laser is touching a segment, reflect its angle.
 			if(intersectedShape) {
@@ -68,7 +68,7 @@ Analyzer.laneFinder = (vectorMap, inputSettings={}) => {
 			// If the laser is in the base and has a clear line of sight to the flag
 			if(
 				lasers[i].head.end.distanceTo(endFlag.point)[0] <= BASE_RADIUS &&
-				GeometryUtilities.clearLineOfSight(lasers[i].head.end, endFlag.point, vectorMap.planarSets.immpassible)
+				GeometryUtilities.clearLineOfSight(lasers[i].head.end, endFlag.point, vectorMap.planarSets.immpassable)
 			) {
 				// Mark it as a clear route
 				lasers[i].clear = true;
@@ -96,7 +96,7 @@ Analyzer.detectVectorMapSymmetry = {
 			[val]: 0
 		}), {});
 
-		const elementTypes = ["walls", "bombs", "spikes", "flags"];
+		const elementTypes = ELEMENT_TYPES.map(e => e.toLowerCase());
 		for(let i = 0; i < elementTypes.length; i++) {
 			const elementType = elementTypes[i];
 

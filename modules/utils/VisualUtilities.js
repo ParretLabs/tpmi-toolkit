@@ -3,6 +3,7 @@
 const path = require('path');
 const PNGImage = require('pngjs-image');
 const cheerio = require('cheerio');
+const { Polygon } = require('@flatten-js/core');
 
 const { TILE_COLORS, TILE_IDS, ELEMENT_TYPES } = require('../CONSTANTS');
 
@@ -18,6 +19,8 @@ const IMAGES = [];
 // 	});
 // });
 
+VisualUtilities.getViewBox = (width, height) => `-1 -1 ${width + 2} ${height + 2}`;
+
 VisualUtilities.visualizeVectorMap = vectorMap => {
 	const gridSVG = `<g>
 		<defs>
@@ -27,30 +30,44 @@ VisualUtilities.visualizeVectorMap = vectorMap => {
 			</pattern>
 		</defs>
 
-		<rect x="0" y="0" width="100%" height="100%" fill="url(#grid)" />
+		<rect x="-1" y="-1" width="100%" height="100%" fill="url(#grid)" />
 	</g>`;
 
-	const outerWallSVG = VisualUtilities.generatePolygonSVGs(vectorMap.elements.outerWall, "", "outer-wall");
-	const islandsSVG = VisualUtilities.generatePolygonSVGs(vectorMap.elements.islands, "", "island");
-	let elementsSVG = ["flags", "bombs", "spikes"].reduce((acc, val) => {
+	const outerWallSVG = VisualUtilities.generatePolygonSVGs([vectorMap.elements.outerWall.shape.vertices], "", "outer-wall");
+	const islandsSVG = VisualUtilities.generatePolygonSVGs(vectorMap.elements.islands.map(i => i.shape.vertices), "", "island");
+	const gatesSVG = VisualUtilities.generatePolygonSVGs(vectorMap.elements.gates.map(g => g.shape.vertices), "", "gate");
+
+	let elementsSVG = ["flags", "bombs", "spikes", "boosts", "powerups"].reduce((acc, val) => {
 		return acc + VisualUtilities.groupSVGElements(vectorMap.elements[val].map(e => e.visualize()));
 	}, "");
 
 	let $svg = cheerio.load(VisualUtilities.appendToSVGDoc(
-		`<body><svg></svg></body>`,
+		`<body>
+<style>
+	svg .center {
+		transform-box: fill-box;
+		transform-origin: center;
+	}
+</style>
+<svg></svg></body>`,
+		gridSVG,
 		outerWallSVG,
 		islandsSVG,
+		gatesSVG,
 		elementsSVG
 	));
 
 	$svg(".outer-wall").attr("style", "fill:transparent;stroke:black;");
 	$svg(".outer-wall").attr("stroke-width", "0.25");
 	$svg(".outer-wall").attr("stroke-linecap", "round");
+	// $svg(".outer-wall").attr("transform", "translate(0.5, 0.5)");
 
 	$svg(".island").attr("style", "fill:maroon;");
 
-	$svg("svg").attr("viewBox", `-1 -1 ${vectorMap.width + 1} ${vectorMap.height + 1}`);
-	$svg("svg").css("width", "48vw");
+	$svg(".gate").attr("style", "fill:#111;");
+
+	$svg("svg").attr("viewBox", VisualUtilities.getViewBox(vectorMap.width, vectorMap.height));
+	$svg("svg").css("width", "512px");
 	$svg("svg").css("border", "1px solid black");
 
 	return $svg.html();
@@ -83,13 +100,9 @@ VisualUtilities.visualizeBoxMap = boxMap => {
 VisualUtilities.visualizeWallMap = wallMap => {
 	let svg = "";
 
-	for (let y = 0; y < wallMap.length; y++) {
-		for (let x = 0; x < wallMap[0].length; x++) {
-			svg += `<rect x="${x}" y="${y}" width="1" height="1" style="fill:${COLORS[wallMap[y][x]]};" />`;
-		}
-	}
+	svg += VisualUtilities.generateGridSVGs(wallMap);
 
-	let $svg = cheerio.load(`<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`);
+	let $svg = cheerio.load(`<svg viewBox="${VisualUtilities.getViewBox(wallMap[0].length, wallMap.length)}">${svg}</svg>`);
 
 	$svg("svg").css("width", "48vw");
 	$svg("svg").css("border", "1px solid black");
@@ -103,15 +116,13 @@ VisualUtilities.visualizeOptimizedWallMap = (optimizedWallMap, customCSS) => {
 	let { optimizedWallMap: wallMap, outerWall } = optimizedWallMap;
 
 	svg += VisualUtilities.generateGridSVGs(wallMap);
+	svg += VisualUtilities.generatePointSVGs(outerWall, "fill:aqua;");
 
-	for (let i = 0; i < outerWall.length; i++) {
-		svg += `<circle cx="${outerWall[i].x + 0.5}" cy="${outerWall[i].y + 0.5}" r="0.25" style="fill:aqua;" fill-opacity="0.4" />`;
-	}
-
-	let $svg = cheerio.load(`<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`);
+	let $svg = cheerio.load(`<svg>${svg}</svg>`);
 
 	$svg("svg").css("border", "1px solid black");
 	$svg("svg").css("height", "512px");
+	$svg("svg").attr("viewBox", VisualUtilities.getViewBox(wallMap[0].length, wallMap.length));
 	$svg("svg").css(customCSS);
 
 	return $svg.html();
@@ -126,10 +137,11 @@ VisualUtilities.visualizeWallVectors = (wallVectors, customCSS) => {
 	svg += VisualUtilities.generatePointSVGs(outerWall, "fill:aqua;");
 	svg += VisualUtilities.generatePolygonSVGs(islands, "fill:maroon;");
 
-	let $svg = cheerio.load(`<svg viewBox="0 0 ${wallMap[0].length} ${wallMap.length}">${svg}</svg>`);
+	let $svg = cheerio.load(`<svg>${svg}</svg>`);
 
 	$svg("svg").css("border", "1px solid black");
 	$svg("svg").css("height", "512px");
+	$svg("svg").attr("viewBox", VisualUtilities.getViewBox(wallMap[0].length, wallMap.length));
 	$svg("svg").css(customCSS);
 
 	return $svg.html();
@@ -137,8 +149,9 @@ VisualUtilities.visualizeWallVectors = (wallVectors, customCSS) => {
 
 VisualUtilities.generatePolygonSVGs = (polygons, style="fill:gray;", className="") => {
 	let svg = "";
+
 	for (let i = 0; i < polygons.length; i++) {
-		svg += `<polygon points="${polygons[i].map(p => `${p.x + 0.5},${p.y + 0.5}`).join(" ")}" style="${style}" class="${className}" fill-opacity="0.7" />`;
+		svg += `<polygon points="${polygons[i].map(p => `${p.x},${p.y}`).join(" ")}" style="${style}" class="${className}" fill-opacity="0.7"></polygon>`;
 	}
 	return svg;
 };
@@ -147,7 +160,7 @@ VisualUtilities.generateGridSVGs = grid => {
 	let svg = "";
 	for (let y = 0; y < grid.length; y++) {
 		for (let x = 0; x < grid[0].length; x++) {
-			svg += `<rect x="${x}" y="${y}" width="1" height="1" style="fill:${COLORS[grid[y][x]]};" />`;
+			svg += `<rect x="${x - 0.5}" y="${y - 0.5}" width="1" height="1" style="fill:${COLORS[grid[y][x]]};"></rect>`;
 		}
 	}
 	return svg;
@@ -156,7 +169,7 @@ VisualUtilities.generateGridSVGs = grid => {
 VisualUtilities.generatePointSVGs = (points, style="fill:gray;", className="") => {
 	let svg = "";
 	for (let i = 0; i < points.length; i++) {
-		svg += `<circle cx="${points[i].x + 0.5}" cy="${points[i].y + 0.5}" r="0.25" style="${style}" class="${className}" fill-opacity="0.75" />`;
+		svg += `<circle cx="${points[i].x}" cy="${points[i].y}" r="0.25" style="${style}" class="${className}" fill-opacity="0.75"></circle>`;
 	}
 	return svg;
 };

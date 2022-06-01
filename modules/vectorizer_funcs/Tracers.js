@@ -34,7 +34,7 @@ module.exports = Vectorizer => {
 		const { optimizedWallMap, outerWall } = Vectorizer.getOptimizedWallMap(impassableMap);
 
 		// Trace islands
-		const islands = Vectorizer.traceSparseElementsFromMap(optimizedWallMap, impassableMap, 2);
+		const islands = Vectorizer.traceClusteredElementsFromMap(optimizedWallMap, impassableMap, 2);
 
 		return { optimizedWallMap, outerWall, islands };
 	};
@@ -92,7 +92,7 @@ module.exports = Vectorizer => {
 	 * @param  {number} tileID
 	 * @return {Array[Cluster]}
 	 */
-	Vectorizer.traceSparseElementsFromMap = (markMap, elementMap, tileID) => {
+	Vectorizer.traceClusteredElementsFromMap = (markMap, elementMap, tileID) => {
 		let handledClusterPoints = {};
 		let clusters = [];
 
@@ -126,7 +126,7 @@ module.exports = Vectorizer => {
 			const pointHash = `${pos_x},${pos_y}`;
 
 			if(handledClusterPoints[pointHash]) return;
-			if(markMap[pos_y][pos_x] === 2) {
+			if(markMap[pos_y][pos_x] === tileID) {
 				const detectorPolygon = GeometryUtilities.tileIDToPolygon(elementMap[pos_y][pos_x], new Point(pos_x, pos_y));
 				clusters[islandIndex] = clusters[islandIndex].concat(detectorPolygon.vertices);
 

@@ -70,24 +70,31 @@ VectorUtilities.generatePlanarSetFromElements = (...elementArrays) => {
 VectorUtilities.generatePlanarSetsFromVectorMap = vectorMap => {
 	let planarSets = {};
 
-	// Puts all impassible-type element shapes into a planar set
-	planarSets.immpassible = VectorUtilities.generatePlanarSetFromElements(
-		vectorMap.elements.walls,
+	// Puts all impassable-type element shapes into a planar set
+	planarSets.immpassable = VectorUtilities.generatePlanarSetFromElements(
+		[vectorMap.elements.outerWall],
+		vectorMap.elements.islands,
 		vectorMap.elements.spikes
 	);
 
-	// Puts all semipassible-type element shapes into a planar set
-	planarSets.semipassible = VectorUtilities.generatePlanarSetFromElements(
+	// Puts all semipassable-type element shapes into a planar set
+	planarSets.semipassable = VectorUtilities.generatePlanarSetFromElements(
 		vectorMap.elements.flags,
-		vectorMap.elements.bombs
+		vectorMap.elements.bombs,
+		vectorMap.elements.boosts,
+		vectorMap.elements.gates
 	);
 
 	// Puts all element shapes into a planar set
 	planarSets.all = VectorUtilities.generatePlanarSetFromElements(
-		vectorMap.elements.walls,
+		[vectorMap.elements.outerWall],
+		vectorMap.elements.islands,
 		vectorMap.elements.spikes,
 		vectorMap.elements.flags,
-		vectorMap.elements.bombs
+		vectorMap.elements.bombs,
+		vectorMap.elements.boosts,
+		vectorMap.elements.powerups,
+		vectorMap.elements.gates
 	);
 
 	return planarSets;
@@ -137,6 +144,8 @@ VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 	let flags = [];
 	let spikes = [];
 	let bombs = [];
+	let boosts = [];
+	let powerups = [];
 
 	for (let y = 0; y < tileMap.length; y++) {
 		for (let x = 0; x < tileMap[0].length; x++) {
@@ -146,10 +155,14 @@ VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.BLUE));
 			else if(isTile(TILE_IDS.SPIKE)) spikes.push(new Elements.Spike({x, y}));
 			else if(isTile(TILE_IDS.BOMB)) bombs.push(new Elements.Bomb({x, y}));
+			else if(isTile(TILE_IDS.BOOST)) boosts.push(new Elements.Boost({x, y}, TEAMS.NONE));
+			else if(isTile(TILE_IDS.REDBOOST)) boosts.push(new Elements.Boost({x, y}, TEAMS.RED));
+			else if(isTile(TILE_IDS.BLUEBOOST)) boosts.push(new Elements.Boost({x, y}, TEAMS.BLUE));
+			else if(isTile(TILE_IDS.POWERUP)) powerups.push(new Elements.Powerup({x, y}));
 		}
 	}
 
-	return { flags, spikes, bombs };
+	return { flags, spikes, bombs, boosts, powerups };
 };
 
 // Iterates through all elements in an array
