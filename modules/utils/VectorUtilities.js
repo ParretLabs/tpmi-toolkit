@@ -125,10 +125,7 @@ VectorUtilities.getFlagPair = flags => [
 ];
 
 VectorUtilities.elementsToPoints = elements => elements.reduce((acc, elem) => {
-	if(elem.shapeType === "Point") acc.push(elem.shape);
-	else if(elem.shapeType === "Segment") return acc.concat([elem.shape.start, elem.shape.end]);
-
-	return acc;
+	return acc.concat(elem.toPoints());
 }, []);
 
 VectorUtilities.roundElementPositions = elements => {
@@ -219,7 +216,7 @@ VectorUtilities.getMinVectorFromElements = elements => {
 		minVector
 	);
 
-	return GeometryUtilities.roundPoint(new Vector(minVector.x, minVector.y));
+	return Utilities.roundPoint(new Vector(minVector.x, minVector.y));
 };
 
 VectorUtilities.getMaxVectorFromElements = elements => {
@@ -232,7 +229,7 @@ VectorUtilities.getMaxVectorFromElements = elements => {
 		maxVector
 	);
 
-	return GeometryUtilities.roundPoint(new Vector(maxVector.x, maxVector.y));
+	return Utilities.roundPoint(new Vector(maxVector.x, maxVector.y));
 };
 
 // Translates all elements in an array

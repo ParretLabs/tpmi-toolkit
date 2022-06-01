@@ -1,4 +1,4 @@
-const { Point, Segment, Vector, Box, Line } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box, Line, Polygon } = require('@flatten-js/core');
 
 const Utilities = require('./utils/Utilities');
 const VectorUtilities = require('./utils/VectorUtilities');
@@ -17,7 +17,8 @@ Vectorizer.VectorMap = class VectorMap {
 		this.size = new Vector(0, 0);
 
 		this.elements = {
-			walls: elements.walls || [],
+			outerWall: elements.outerWall || null,
+			islands: elements.islands || [],
 			flags: elements.flags || [],
 			spikes: elements.spikes || [],
 			bombs: elements.bombs || [],
@@ -37,7 +38,8 @@ Vectorizer.VectorMap = class VectorMap {
 	clone() {
 		return new Vectorizer.VectorMap({
 			elements: {
-				walls: this.elements.walls.map(w => w.clone()),
+				outerWall: this.elements.outerWall.clone(),
+				islands: this.elements.islands.map(i => i.clone()),
 				flags: this.elements.flags.map(f => f.clone()),
 				spikes: this.elements.spikes.map(s => s.clone()),
 				bombs: this.elements.bombs.map(b => b.clone())
@@ -55,7 +57,7 @@ Vectorizer.VectorMap = class VectorMap {
 		return ELEMENT_TYPES.reduce(
 			(acc, e) => acc.concat(this.elements[e.toLowerCase()]),
 			[]
-		);
+		).concat([this.elements.outerWall]);
 	}
 
 	setElements(elementsObj, disableNormalization) {
@@ -112,11 +114,12 @@ require('./vectorizer_funcs/Tracers')(Vectorizer);
 Vectorizer.createVectorMapFromTileMap = tileMap => {
 	const wallMap = MapUtilities.tileMapToWallMap(tileMap);
 	const { flags, bombs, spikes } = VectorUtilities.getVectorPointElementsFromTileMap(tileMap);
-	const { walls, islands } = Vectorizer.getWallsFromWallMap(wallMap);
+	const { outerWall, islands } = Vectorizer.getWallsFromWallMap(wallMap);
 
 	let vectorMap = new Vectorizer.VectorMap({
 		elements: {
-			walls: Vectorizer.getWallsFromWallMap(wallMap),
+			outerWall: outerWall,
+			islands: islands,
 			flags, bombs, spikes
 		}
 	});

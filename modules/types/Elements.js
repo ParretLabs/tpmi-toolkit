@@ -1,4 +1,4 @@
-const { Point, Segment, Vector, Box } = require('@flatten-js/core');
+const { Point, Segment, Vector, Box, Polygon } = require('@flatten-js/core');
 const { TEAMS } = require('../CONSTANTS');
 
 let Elements = {};
@@ -11,6 +11,8 @@ Elements.BaseElement = class BaseElement {
 			this.shape = new Point(data.x, data.y);
 		} else if(data.ps && data.pe) {
 			this.shape = new Segment(data.ps, data.pe);
+		} else if(data[0] && typeof data[0].x === "number" && typeof data[0].y === "number") {
+			this.shape = new Polygon(data);
 		} else {
 			throw new Error("Invalid Element Shape: " + JSON.stringify(data));
 		}
@@ -35,8 +37,21 @@ Elements.BaseElement = class BaseElement {
 		} else if(this.shapeType === "Segment") {
 			roundPoint(this.shape.start);
 			roundPoint(this.shape.end);
+		} else if(this.shapeType === "Polygon") {
+			this.shape = new Polygon(this.shape.verticies.map(p => roundPoint(p)));
 		}
+
 		return this;
+	}
+
+	toPoints() {
+		if(this.shapeType === "Point") {
+			return [this.shape];
+		} else if(this.shapeType === "Segment") {
+			return [this.shape.start, this.shape.end];
+		} else if(this.shapeType === "Polygon") {
+			return this.shape.verticies;
+		}
 	}
 
 	update(settings) {
@@ -58,13 +73,23 @@ Elements.Wall = class Wall extends Elements.BaseElement {
 	}
 }
 
-Elements.Island = class Island {
-	constructor(points){
-		this.points = points;
+Elements.OuterWall = class OuterWall extends Elements.BaseElement {
+	constructor(verticies){
+		super(verticies);
 	}
 
 	clone() {
-		return new Elements[this.constructor.name](this.points);
+		return new Elements[this.constructor.name](this.shape);
+	}
+}
+
+Elements.Island = class Island extends Elements.BaseElement {
+	constructor(verticies){
+		super(verticies);
+	}
+
+	clone() {
+		return new Elements[this.constructor.name](this.shape);
 	}
 }
 

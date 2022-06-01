@@ -1,6 +1,6 @@
 // First-Level Utility (Should never require any other utilities)
 // General Utilities
-
+const { Point } = require('@flatten-js/core');
 const {TILE_COLORS, TILE_IDS} = require('../CONSTANTS');
 
 let Utilities = {};
@@ -51,6 +51,56 @@ Utilities.hashNumberArray = (numbers, maxBytes=8) => {
 }
 
 Utilities.angleBetween = ([x1, y1], [x2, y2]) => Math.atan2(y2 - y1, x2 - x1);
+Utilities.distanceBetween = ([x1, y1], [x2, y2]) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+
+// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
+Utilities.getLinePoints = (p0, p1) => {
+	let points = [];
+	let deltax = p1.x - p0.x;
+	let deltay = p1.y - p0.y;
+	let deltaerr = Math.abs(deltay / deltax);
+
+	let error = 0;
+	let y = p0.y;
+	for (let x = p0.x; x < p1.x; x++) {
+		points.push(Utilities.roundPoint(new Point(x, y)));
+
+		error = error + deltaerr;
+		if(error >= 0.5) {
+			y = y + Math.sign(deltay);
+			error = error - 1;
+		}
+	}
+
+	return points;
+}
+
+Utilities.getLinePointsAlt = (p0, p1) => {
+	let points = [];
+	let N = Utilities.diagonalDistance(p0, p1);
+	for (let step = 0; step <= N; step++) {
+		let t = N === 0 ? 0 : step / N;
+		points.push(Utilities.roundPoint(Utilities.lerpPoint(p0, p1, t)));
+	}
+	return points;
+}
+
+Utilities.lerpPoint = (p0, p1, t) => {
+	return new Point(Utilities.lerp(p0.x, p1.x, t), Utilities.lerp(p0.y, p1.y, t));
+}
+
+Utilities.roundPoint = point => pointFloatRemove("round", point);
+Utilities.floorPoint = point => pointFloatRemove("floor", point);
+Utilities.ceilPoint = point => pointFloatRemove("ceil", point);
+
+Utilities.lerp = (start, end, t) => {
+	return start + t * (end-start);
+}
+
+Utilities.diagonalDistance = (p0, p1) => {
+	let dx = p1.x - p0.x, dy = p1.y - p0.y;
+	return Math.max(Math.abs(dx), Math.abs(dy));
+}
 
 Utilities.tileToHex = (tile)  => {
 	return Utilities.rgbToHex(TILE_COLORS[tile].r, TILE_COLORS[tile].b, TILE_COLORS[tile].g);
@@ -70,6 +120,12 @@ Utilities.rgbToHex = (r, g, b) => {
 Utilities.componentToHex = (c)  => {
 	let hex = c.toString(16);
 	return hex.length == 1 ? "0" + hex : hex;
+}
+
+function pointFloatRemove(type, point) {
+	point.x = Math[type](point.x);
+	point.y = Math[type](point.y);
+	return point;
 }
 
 module.exports = Utilities;

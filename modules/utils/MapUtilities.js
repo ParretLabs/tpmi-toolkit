@@ -6,7 +6,6 @@ const { Point } = require('@flatten-js/core');
 
 const { TILE_COLORS, TILE_IDS, SYMMETRY_FUNCTIONS } = require('../CONSTANTS');
 const Utilities = require('./Utilities');
-const GeometryUtilities = require('./GeometryUtilities');
 
 let MapUtilities = {};
 
@@ -112,12 +111,12 @@ MapUtilities.tileMapToWallMap = tileMap => MapUtilities.createIncludedTileMap(ti
 ]);
 
 MapUtilities.tileMapToImpassableMap = tileMap => MapUtilities.createSpecificTileMap(tileMap, {
-	[TILE_IDS.WALL]: 1,
-	[TILE_IDS.TLWALL]: 2,
-	[TILE_IDS.TRWALL]: 3,
-	[TILE_IDS.BLWALL]: 4,
-	[TILE_IDS.BRWALL]: 5,
-	[TILE_IDS.SPIKE]: 6
+	[TILE_IDS.WALL]: TILE_IDS.WALL,
+	[TILE_IDS.TLWALL]: TILE_IDS.TLWALL,
+	[TILE_IDS.TRWALL]: TILE_IDS.TRWALL,
+	[TILE_IDS.BLWALL]: TILE_IDS.BLWALL,
+	[TILE_IDS.BRWALL]: TILE_IDS.BRWALL,
+	[TILE_IDS.SPIKE]: TILE_IDS.SPIKE
 });
 
 /**
@@ -129,9 +128,10 @@ MapUtilities.getEssentialWalls = wallMap => {
 	const handledMap = wallMap.map(a => Array(a.length).fill(0));
 	let essentialWallMap = Utilities.createEmpty2dArray(wallMap[0].length, wallMap.length);
 
-	let floorPoint = MapUtilities.diagonalFloorSearch(wallMap);
+	// let floorTilePoint = MapUtilities.diagonalFloorSearch(wallMap, {x: 0, y: 0}, true);
+	let floorTilePoint = MapUtilities.diagonalTileSearch(wallMap, 0, {x: 0, y: 0}, true);
 
-	floodFillHelper(floorPoint.x, floorPoint.y);
+	floodFillHelper(floorTilePoint.x, floorTilePoint.y);
 
 	function floodFillHelper(pos_x, pos_y) {
 		if(MapUtilities.getTile(essentialWallMap, pos_x, pos_y) === null) return;
@@ -156,27 +156,56 @@ MapUtilities.getEssentialWalls = wallMap => {
 }
 
 /**
+ * Searches diagonally from the top left of the map until a certain tile is found.
+ * @param  {Array[Array]} wallMap - The map to traverse
+ * @param  {number}       tileID  - The tile to search for
+ * @param  {Point}        from    - direction to move from
+ * @return {Point|null}
+ */
+MapUtilities.diagonalTileSearch = (map, tileID, from=({x: 0, y: 0}), fromCenter=false) => {
+	const oppositeEnd = SYMMETRY_FUNCTIONS.R({width: map[0].length, height: map.length}, from)[0];
+	let points = Utilities.getLinePointsAlt(from, oppositeEnd);
+
+	if(fromCenter) {
+		const center = points[Math.floor(points.length / 2)];
+		points = points.sort((a, b) => center.distanceTo(a)[0] - center.distanceTo(b)[0]);
+	}
+
+	// Search diagonally for a wall, then keep searching diagonally until an empty tile is found.
+	for (let i = 0; i < points.length; i++) {
+		if(MapUtilities.getTile(map, points[i].x, points[i].y) === tileID) {
+			return points[i];
+		}
+	}
+
+	return null;
+};
+
+/**
  * Searches diagonally from the top left of the map until an inner floor tile is found.
  * @param  {Array[Array]} wallMap - The map to traverse
  * @return {Point|null}
  */
-MapUtilities.diagonalFloorSearch = wallMap => {
-	let floorPoint = new Point(0, 0);
+MapUtilities.diagonalFloorSearch = (wallMap, from=({x: 0, y: 0}), fromCenter=false) => {
+	const oppositeEnd = SYMMETRY_FUNCTIONS.R({width: wallMap[0].length, height: wallMap.length}, from)[0];
+	let points = Utilities.getLinePointsAlt(from, oppositeEnd);
 	let touchedWall = false;
 
-	// Search diagonally for a wall, then keep searching diagonally until an empty tile is found.
-	for(let distance = 0; distance < wallMap[0].length; distance++) {
-		if(touchedWall && MapUtilities.getTile(wallMap, distance, distance) === 0) {
-			floorPoint.x = distance;
-			floorPoint.y = distance;
+	if(fromCenter) {
+		const center = points[Math.floor(points.length / 2)];
+		points = points.sort((a, b) => center.distanceTo(a) - center.distanceTo(b));
+	}
 
-			break;
-		} else if(MapUtilities.getTile(wallMap, distance, distance) !== 0) {
+	// Search diagonally for a wall, then keep searching diagonally until an empty tile is found.
+	for (let i = 0; i < points.length; i++) {
+		if(touchedWall && MapUtilities.getTile(wallMap, points[i].x, points[i].y) === 0) {
+			return points[i];
+		} else if(MapUtilities.getTile(wallMap, points[i].x, points[i].y) !== 0) {
 			touchedWall = true;
 		}
 	}
 
-	return floorPoint;
+	return null;
 };
 
 /**
@@ -187,7 +216,7 @@ MapUtilities.diagonalFloorSearch = wallMap => {
  */
 MapUtilities.diagonalWallSearch = (wallMap, from=({x: 0, y: 0})) => {
 	const oppositeEnd = SYMMETRY_FUNCTIONS.R({width: wallMap[0].length, height: wallMap.length}, from)[0];
-	const points = GeometryUtilities.getLinePointsAlt(from, oppositeEnd);
+	const points = Utilities.getLinePointsAlt(from, oppositeEnd);
 
 	for (let i = 0; i < points.length; i++) {
 		if(MapUtilities.getTile(wallMap, points[i].x, points[i].y) !== 0) {

@@ -1,7 +1,8 @@
 // Second-level Utility (Can only require first-level utilities)
 // For utilities that interact with Flatten.js and other geometry related functions.
 
-const { Point, Segment, Vector, PlanarSet, Box, Ray } = require('@flatten-js/core');
+const { point, Point, Segment, Vector, PlanarSet, Polygon, Box, Ray } = require('@flatten-js/core');
+const { TILE_IDS } = require('../CONSTANTS');
 const Utilities = require('./Utilities');
 
 let GeometryUtilities = {};
@@ -63,6 +64,18 @@ GeometryUtilities.createDetector = (point, inputSettings={}) => {
 	);
 };
 
+// Creates polygon that matches the shape of the input tile. Centered at the origin.
+GeometryUtilities.tileIDToPolygon = (tileID, {x, y}) => {
+	const translate = points => new Polygon(points).translate(new Vector(x, y));
+
+	if(tileID === TILE_IDS.TLWALL) return translate([point(0, 0), point(-0.5, -0.5), point(0.5, -0.5), point(0.5, -0.5)]);
+	if(tileID === TILE_IDS.TRWALL) return translate([point(0, 0), point(0.5, -0.5), point(0.5, 0.5), point(-0.5, -0.5)]);
+	if(tileID === TILE_IDS.BLWALL) return translate([point(0, 0), point(-0.5, 0.5), point(-0.5, -0.5), point(0.5, 0.5)]);
+	if(tileID === TILE_IDS.BRWALL) return translate([point(0, 0), point(0.5, 0.5), point(-0.5, 0.5), point(0.5, -0.5)]);
+
+	return translate(new Box(-0.5, -0.5, 0.5, 0.5));
+};
+
 GeometryUtilities.hashSegment = segment => {
 	return Utilities.hashNumberArray([segment.start.x, segment.start.y, segment.end.x, segment.end.y]);
 };
@@ -78,7 +91,7 @@ GeometryUtilities.createPlanarSet = shapes => {
 
 // Checks for clear line of sight between to points. Uses a planar set as the obstructions.
 GeometryUtilities.clearLineOfSight = (startPoint, endPoint, blockingPlanarSet) => {
-	let detectors = GeometryUtilities.getLinePointsAlt(startPoint, endPoint).map(p => {
+	let detectors = Utilities.getLinePointsAlt(startPoint, endPoint).map(p => {
 		return GeometryUtilities.createDetector(p, {size: 1})
 	});
 
@@ -86,55 +99,6 @@ GeometryUtilities.clearLineOfSight = (startPoint, endPoint, blockingPlanarSet) =
 
 	return true;
 };
-
-// https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
-GeometryUtilities.getLinePoints = (p0, p1) => {
-	let points = [];
-	let deltax = p1.x - p0.x;
-	let deltay = p1.y - p0.y;
-	let deltaerr = Math.abs(deltay / deltax);
-
-	let error = 0;
-	let y = p0.y;
-	for (let x = p0.x; x < p1.x; x++) {
-		points.push(GeometryUtilities.roundPoint(new Point(x, y)));
-
-		error = error + deltaerr;
-		if(error >= 0.5) {
-			y = y + Math.sign(deltay);
-			error = error - 1;
-		}
-	}
-
-	return points;
-}
-
-GeometryUtilities.getLinePointsAlt = (p0, p1) => {
-	let points = [];
-	let N = GeometryUtilities.diagonalDistance(p0, p1);
-	for (let step = 0; step <= N; step++) {
-		let t = N === 0 ? 0 : step / N;
-		points.push(GeometryUtilities.roundPoint(GeometryUtilities.lerpPoint(p0, p1, t)));
-	}
-	return points;
-}
-
-GeometryUtilities.diagonalDistance = (p0, p1) => {
-	let dx = p1.x - p0.x, dy = p1.y - p0.y;
-	return Math.max(Math.abs(dx), Math.abs(dy));
-}
-
-GeometryUtilities.lerpPoint = (p0, p1, t) => {
-	return new Point(GeometryUtilities.lerp(p0.x, p1.x, t), GeometryUtilities.lerp(p0.y, p1.y, t));
-}
-
-GeometryUtilities.roundPoint = point => pointFloatRemove("round", point);
-GeometryUtilities.floorPoint = point => pointFloatRemove("floor", point);
-GeometryUtilities.ceilPoint = point => pointFloatRemove("ceil", point);
-
-GeometryUtilities.lerp = (start, end, t) => {
-	return start + t * (end-start);
-}
 
 GeometryUtilities.pointsEqualTo = (points, eqPoint, func="every") => points[func](p => eqPoint.equalTo(p));
 GeometryUtilities.getClosestPoint = (points, anchor) => points.reduce((acc, p) => {
