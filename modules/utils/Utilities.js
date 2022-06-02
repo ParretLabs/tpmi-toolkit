@@ -1,6 +1,6 @@
 // First-Level Utility (Should never require any other utilities)
 // General Utilities
-const { Point } = require('@flatten-js/core');
+const { Point, point } = require('@flatten-js/core');
 const {TILE_COLORS, TILE_IDS} = require('../CONSTANTS');
 
 let Utilities = {};
@@ -50,8 +50,17 @@ Utilities.hashNumberArray = (numbers, maxBytes=8) => {
 	return parseInt(numbers.reduce((acc, val) => acc + val.toString(2).padStart(maxBytes, "0"), ""), 2);
 }
 
-Utilities.angleBetween = ([x1, y1], [x2, y2]) => Math.atan2(y2 - y1, x2 - x1);
-Utilities.distanceBetween = ([x1, y1], [x2, y2]) => Math.sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2);
+Utilities.angleBetween = (p1, p2) => {
+	p1 = point(p1);
+	p2 = point(p2);
+	return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+};
+
+Utilities.distanceBetween = (p1, p2) => {
+	p1 = point(p1);
+	p2 = point(p2);
+	return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
+};
 
 // https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
 Utilities.getLinePoints = (p0, p1) => {
