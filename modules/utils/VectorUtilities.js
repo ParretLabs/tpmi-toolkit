@@ -362,14 +362,24 @@ VectorUtilities.getClosestSymmetricRelationshipBetweenElements = ({width, height
 		[`${Math.floor(p.x)},${Math.floor(p.y)}`]: true
 	}), {});
 	const doesPointExist = p => pointMap[`${Math.floor(p.x)},${Math.floor(p.y)}`] || false;
+	let foundSymmetry = false;
 
 	for (let i = points.length - 1; i >= 0; i--) {
 		const point = points[i];
 
 		symmetryNames.forEach(sym => {
 			const mirroredPoints = SYMMETRY_FUNCTIONS[SYMMETRY[sym]]({width, height}, point);
-			if(mirroredPoints.every(doesPointExist)) symmetryScore[sym]++;
+			if(mirroredPoints.every(doesPointExist)) {
+				symmetryScore[sym]++;
+			}
+
+			// Check if there is no way that the output symmetry will change past this point.
+			if(symmetryScore[sym] > points.length / symmetryNames.length) {
+				foundSymmetry = true;
+			}
 		});
+
+		if(foundSymmetry) break;
 	}
 
 	return SYMMETRY[

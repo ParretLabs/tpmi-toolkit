@@ -95,8 +95,8 @@ Analyzer.detectVectorMapSymmetry = {
 			...acc,
 			[val]: 0
 		}), {});
-
 		const elementTypes = ELEMENT_TYPES.map(e => e.toLowerCase());
+
 		for(let i = 0; i < elementTypes.length; i++) {
 			const elementType = elementTypes[i];
 
