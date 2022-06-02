@@ -158,6 +158,7 @@ VectorUtilities.getVectorPointElementsFromTileMap = tileMap => {
 
 			if(isTile(TILE_IDS.REDFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.RED));
 			else if(isTile(TILE_IDS.BLUEFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.BLUE));
+			else if(isTile(TILE_IDS.YELLOWFLAG)) flags.push(new Elements.Flag({x, y}, TEAMS.NONE));
 			else if(isTile(TILE_IDS.SPIKE)) spikes.push(new Elements.Spike({x, y}));
 			else if(isTile(TILE_IDS.BOMB)) bombs.push(new Elements.Bomb({x, y}));
 			else if(isTile(TILE_IDS.PORTAL)) portals.push(new Elements.Portal({x, y}));

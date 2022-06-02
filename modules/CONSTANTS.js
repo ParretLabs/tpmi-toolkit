@@ -21,7 +21,8 @@ const TILE_IDS = {
 	TRWALL: 17,
 	BLWALL: 18,
 	BRWALL: 19,
-	PORTAL: 20
+	PORTAL: 20,
+	YELLOWFLAG: 21,
 };
 
 const TILE_COLORS = [
@@ -45,7 +46,8 @@ const TILE_COLORS = [
 	{ red: 64, green: 80, blue: 128, alpha: 255 }, // Top Right 45 Wall
 	{ red: 128, green: 112, blue: 64, alpha: 255 }, // Bottom Left 45 Wall
 	{ red: 128, green: 64, blue: 112, alpha: 255 }, // Bottom Right 45 Wall
-	{ red: 202, green: 192, blue: 0, alpha: 255 }, // Bottom Right 45 Wall
+	{ red: 202, green: 192, blue: 0, alpha: 255 }, // Portal
+	{ red: 128, green: 128, blue: 0, alpha: 255 }, // Neutral Flag
 ];
 
 // Clockwise, starting from the top neighbor
