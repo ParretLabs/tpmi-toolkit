@@ -120,7 +120,6 @@ Vectorizer.VectorMap = class VectorMap {
 	}
 };
 
-require('./vectorizer_funcs/fillWallHoles')(Vectorizer);
 require('./vectorizer_funcs/Tracers')(Vectorizer);
 
 Vectorizer.createVectorMapFromTileMap = tileMap => {

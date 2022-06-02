@@ -129,10 +129,19 @@ VectorUtilities.translateWallsAtPoint = (wallElements, oldPoint, newPoint) => {
 	return affectedWallElements;
 };
 
-VectorUtilities.getFlagPair = flags => [
-	flags.find(a => a.team === TEAMS.RED) || null,
-	flags.find(a => a.team === TEAMS.BLUE) || null
-];
+VectorUtilities.getFlagPair = flags => {
+	const redFlag = flags.find(a => a.team === TEAMS.RED) || null;
+
+	if(redFlag) {
+		return [
+			redFlag,
+			flags.find(a => a.team === TEAMS.BLUE) || null
+		];
+	} else {
+		const yellowFlag = flags.find(a => a.team === TEAMS.NONE) || null;
+		return [yellowFlag, yellowFlag];
+	}
+};
 
 VectorUtilities.elementsToPoints = elements => elements.reduce((acc, elem) => {
 	return acc.concat(elem.toPoints());
