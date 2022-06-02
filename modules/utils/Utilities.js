@@ -50,15 +50,20 @@ Utilities.hashNumberArray = (numbers, maxBytes=8) => {
 	return parseInt(numbers.reduce((acc, val) => acc + val.toString(2).padStart(maxBytes, "0"), ""), 2);
 }
 
-Utilities.angleBetween = (p1, p2) => {
-	p1 = point(p1);
-	p2 = point(p2);
+Utilities.formatPoints = (ps) => {
+	return ps.map(p => point(
+		typeof p[0] === 'undefined' ? p.x : p[0],
+		typeof p[1] === 'undefined' ? p.y : p[1]
+	));
+};
+
+Utilities.angleBetween = (...ps) => {
+	[p1, p2] = Utilities.formatPoints(ps);
 	return Math.atan2(p2.y - p1.y, p2.x - p1.x);
 };
 
-Utilities.distanceBetween = (p1, p2) => {
-	p1 = point(p1);
-	p2 = point(p2);
+Utilities.distanceBetween = (...ps) => {
+	[p1, p2] = Utilities.formatPoints(ps);
 	return Math.sqrt((p1.x - p2.x) ** 2 + (p1.y - p2.y) ** 2);
 };
 
