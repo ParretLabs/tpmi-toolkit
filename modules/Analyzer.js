@@ -100,9 +100,9 @@ Analyzer.detectVectorMapSymmetry = {
 		for(let i = 0; i < elementTypes.length; i++) {
 			const elementType = elementTypes[i];
 
-			if(vectorMap[elementType].length >= 2) {
+			if(vectorMap.elements[elementType].length >= 2) {
 				symmetry = VectorUtilities.getClosestSymmetricRelationshipBetweenElements(
-					vectorMap, vectorMap[elementType]
+					vectorMap, vectorMap.elements[elementType]
 				);
 				symmetryScore[symmetry]++;
 			}
