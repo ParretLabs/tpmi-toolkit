@@ -275,12 +275,12 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 				let sortedPoints = sliceLine.sortPoints(intersection);
 				// Use 2 points only
 				sortedPoints = [sortedPoints[0], sortedPoints[1]];
-				if(!sortedPoints[0] || !sortedPoints[1]) return;
+				if(!sortedPoints[0] || !sortedPoints[1]) return console.log(sortedPoints);
 
 				const slicedPolygons = shape.cut(new Multiline([sliceLine]).split(sortedPoints));
 
 				// Find the polygon on the safe side
-				const safeSide = slicedPolygons.find(poly => poly && arePointsSafe(poly.vertices));
+				const safeSide = slicedPolygons.find(poly => poly && poly.vertices.some(isPointSafe));
 
 				if(safeSide) newElements.push(elem.clone().update({
 					shape: safeSide

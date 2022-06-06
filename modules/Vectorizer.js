@@ -186,12 +186,14 @@ Vectorizer.sliceMap = (vectorMap, symmetry) => {
 	// Slice all the different types of elements.
 	let sliceableElements = ELEMENT_TYPES.map(e => e.toLowerCase());
 	let newElements = {};
-
+	
 	for (let i = sliceableElements.length - 1; i >= 0; i--) {
 		newElements[sliceableElements[i]] = VectorUtilities.sliceVectorElements(vectorMap.elements[sliceableElements[i]], sliceLine);
 	}
 
-	newElements.outerWall = VectorUtilities.sliceVectorElements([vectorMap.elements.outerWall], sliceLine)[0];
+	const slicedWall = VectorUtilities.sliceVectorElements([vectorMap.elements.outerWall], sliceLine);
+
+	newElements.outerWall = slicedWall.find(o => o);
 
 	vectorMap.setElements(newElements, true);
 

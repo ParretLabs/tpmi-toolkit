@@ -21,7 +21,7 @@ test("VECTORIZE: Can vectorize map", async () => {
 
 -->`);
 
-		process.stdout.write('\nTesting ' + name);
+		console.log('\nTesting ' + name);
 		if(EXPECTED_DATA[name]) expect(mapTestOutput).toStrictEqual(EXPECTED_DATA[name]);
 	}
 });
@@ -30,22 +30,22 @@ let slicedMaps = new Map();
 
 test("VECTORIZE: Can slice map", async () => {
 	for(const [name, map] of vectorMaps) {
-		const sliced = Vectorizer.sliceMap(map, "H");
+		const sliced = Vectorizer.sliceMap(map, "R");
 		slicedMaps.set(name, sliced);
 
 		await visualizer.writeVisualFile("sliced_" + name, sliced.visualize());
 
-		process.stdout.write('\nSlicing ' + name);
+		console.log('\nSlicing ' + name);
 	}
 });
 
 test("VECTORIZE: Can mirror map", async () => {
 	for(const [name, map] of slicedMaps) {
-		const mirrored = map.symmetrize("H");
+		const mirrored = map.symmetrize("R");
 		// mirroredMaps.set(name, mirrored);
 		
 		await visualizer.writeVisualFile("mirrored_" + name, mirrored.visualize());
 
-		process.stdout.write('\nMirroring ' + name);
+		console.log('\nMirroring ' + name);
 	}
 });
