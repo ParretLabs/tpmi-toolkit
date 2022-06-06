@@ -244,6 +244,7 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 	const [lA, lB, lC] = sliceLine.standard;
 	const isPointSafe = point => (point.y - SAFE_ZONE_TOLERANCE) >= (lC - (lA * (point.x - SAFE_ZONE_TOLERANCE))) / lB;
 	const arePointsSafe = points => points.every(isPointSafe);
+	const safeScore = points => points.reduce((acc, val) => isPointSafe(val) ? acc + 1 : acc, 0);
 
 	VectorUtilities.iterateElements(elements, (elem, shape, shapeType) => {
 		let intersection;
@@ -275,15 +276,16 @@ VectorUtilities.sliceVectorElements = (elements, sliceLine) => {
 				let sortedPoints = sliceLine.sortPoints(intersection);
 				// Use 2 points only
 				sortedPoints = [sortedPoints[0], sortedPoints[1]];
-				if(!sortedPoints[0] || !sortedPoints[1]) return console.log(sortedPoints);
+				if(!sortedPoints[0] || !sortedPoints[1]) return;
 
 				const slicedPolygons = shape.cut(new Multiline([sliceLine]).split(sortedPoints));
 
 				// Find the polygon on the safe side
-				const safeSide = slicedPolygons.find(poly => poly && poly.vertices.some(isPointSafe));
+				const safePoints1 = slicedPolygons[0] ? safeScore(slicedPolygons[0].vertices) : 0;
+				const safePoints2 = slicedPolygons[1] ? safeScore(slicedPolygons[1].vertices) : 0;
 
-				if(safeSide) newElements.push(elem.clone().update({
-					shape: safeSide
+				if(safePoints1 || safePoints2) newElements.push(elem.clone().update({
+					shape: safePoints1 > safePoints2 ? slicedPolygons[0] : slicedPolygons[1]
 				}));
 			}
 		}
@@ -347,9 +349,26 @@ VectorUtilities.mirrorVectorElements = (elements, mirrorFunc, settings={}) => {
 	return newElements;
 };
 
-VectorUtilities.getSliceLineFromSymmetry = ({width, height}, symmetry) => {
+VectorUtilities.getSliceLineFromSymmetry = (vectorMap, symmetry) => {
+	let { width, height } = vectorMap;
+
 	if(symmetry === SYMMETRY.ROTATIONAL) {
-		return new Line(new Point(0, height), new Point(width, 0));
+		let flagPair = VectorUtilities.getFlagPair(vectorMap.elements.flags);
+
+		// If a valid flag pair is found, find the inverse line between the flags to use as a slice line.
+		// If a valid flag pair cannot be found, fallback to a standard diagonal line.
+		if(!flagPair[0] || !flagPair[1]) {
+			return new Line(new Point(0, height), new Point(width, 0));
+		} else {
+			let flagLine = new Line(flagPair[0].shape, flagPair[1].shape);
+			let midPoint = new Point(width / 2, height / 2);
+			let inverseFlagLine = new Line(
+				midPoint,
+				new Vector(flagLine.norm.y, flagLine.norm.x)
+			);
+
+			return inverseFlagLine;
+		}
 	} else if(symmetry === SYMMETRY.HORIZONTAL) {
 		return new Line(new Point(width / 2, 0), new Point(width / 2, height));
 	} else if(symmetry === SYMMETRY.VERTICAL) {

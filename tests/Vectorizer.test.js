@@ -41,7 +41,7 @@ test("VECTORIZE: Can slice map", async () => {
 
 test("VECTORIZE: Can mirror map", async () => {
 	for(const [name, map] of slicedMaps) {
-		const mirrored = map.symmetrize("R");
+		const mirrored = Vectorizer.symmetrizeMap(map, "R");
 		// mirroredMaps.set(name, mirrored);
 		
 		await visualizer.writeVisualFile("mirrored_" + name, mirrored.visualize());
